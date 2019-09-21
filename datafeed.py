@@ -6,6 +6,7 @@ from golos.account import Account
 from golos.blockchain import Blockchain
 from golos.post import Post
 from golosbase.exceptions import PostDoesNotExist
+from golosbase.storage import configStorage
 
 import json
 import os
@@ -42,6 +43,9 @@ processed_posts = {}
 
 STEEMIT_WEBCLIENT_ADDRESS = os.environ.get('STEEMIT_WEBCLIENT_ADDRESS', 'https://golos.id')
 TARANTOOL_HOST = os.environ.get('TARANTOOL_HOST', '127.0.0.1')
+NODE_URL = os.environ.get('NODE_URL', 'http://api.golos.blckchnd.com')
+
+configStorage.__setitem__('nodes', NODE_URL)
 
 
 def getPostKey(post):
@@ -76,7 +80,7 @@ def getFollowers(account):
 def addFollower(account_name, follower):
     print('addFollower', account_name, follower)
     res = tnt_server.call('add_follower', account_name, follower)
-    if not res[0][0]:
+    if not res[0]:
         with suppress(Exception):
             followers = getFollowersWithDirection(Account(account_name))
             followers.append(follower)
@@ -251,8 +255,8 @@ def run():
     else:
         steem_space.insert(('last_block_id', last_block))
 
+    #last_block = 30607249
     for op in chain.stream(start_block=last_block):
-    #for op in chain.stream(start=30589270):
         if last_block % 10 == 0:
             sys.stdout.flush()
 
@@ -269,16 +273,15 @@ def main():
     global chain
 
     print('starting datafeed.py..')
-    ws_connection = os.environ.get('NODE_URL', 'http://api.golos.blckchnd.com')
-    print('Connecting to ', ws_connection)
+    print('Connecting to ', NODE_URL)
     sys.stdout.flush()
 
-    steem = Steem(ws_connection)
+    steem = Steem(NODE_URL)
     chain = Blockchain(steemd_instance=steem, mode='head')
 
     while True:
         try:
-            print('Connecting to tarantool (datastore:3301)..')
+            print(f'Connecting to tarantool (TARANTOOL_HOST:3301)..')
             sys.stdout.flush()
             tnt_server = tarantool.connect(TARANTOOL_HOST, 3301)
             steem_space = tnt_server.space('steem')

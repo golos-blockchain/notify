@@ -1,6 +1,6 @@
 FROM python:3.6.5
 
-RUN pip3 install git+https://github.com/GolosChain/golos-python
+RUN pip3 install golodranets tarantool
 
 ENV STEEM_USER   steem
 ENV STEEM_HOME   /home/steem
