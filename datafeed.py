@@ -143,7 +143,12 @@ def processComment(op):
     comment_body = op['body']
     if not comment_body or comment_body.startswith('@@ '):
         return
-    post = Post(op, steemd_instance=steem)
+    try:
+        post = Post(op, steemd_instance=steem)
+    except PostDoesNotExist as err:
+        print('Err update post', err)
+        return
+
     pkey = getPostKey(post)
     print('post: ', pkey)
     if not pkey or pkey in processed_posts:
@@ -281,7 +286,7 @@ def main():
 
     while True:
         try:
-            print(f'Connecting to tarantool (TARANTOOL_HOST:3301)..')
+            print(f'Connecting to tarantool ({TARANTOOL_HOST}:3301)..')
             sys.stdout.flush()
             tnt_server = tarantool.connect(TARANTOOL_HOST, 3301)
             steem_space = tnt_server.space('steem')
