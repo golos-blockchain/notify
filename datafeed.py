@@ -29,7 +29,8 @@ NTYPES = {
     'post_reply': 8,
     'account_update': 9,
     'message': 10,
-    'receive': 11
+    'receive': 11,
+    'donate': 12
 }
 
 # gloabal variables
@@ -211,6 +212,22 @@ def processTransfer(op):
         ''
     )
 
+def processDonate(op):
+    if op['from'] == op['to']:
+        return
+    print("donate", op['from'], op['to'])
+    title = 'Golos'
+    body = 'you received %s donate from @%s' % (op['amount'], op['from'])
+    url = '%s/@%s/donates-to' % (STEEMIT_WEBCLIENT_ADDRESS, op['to'])
+    tnt_server.call(
+        'notification_add',
+        op['to'],
+        NTYPES['donate'],
+        title,
+        body,
+        url,
+        ''
+    )
 
 def processAccountUpdate(op):
     print(json.dumps(op, indent=4))
@@ -243,8 +260,11 @@ def processOp(op_data):
     if op_type == 'comment':
         processComment(op)
 
-    if op_type.startswith('transfer'):
+    if op_type.startswith('transfer') or op_type == 'claim':
         processTransfer(op)
+
+    if op_type == 'donate':
+        processDonate(op)
 
     if op_type == 'account_update':
         processAccountUpdate(op)
