@@ -229,25 +229,25 @@ def processDonate(op):
         ''
     )
 
-def processAccountUpdate(op):
-    print(json.dumps(op, indent=4))
-    if not ('active' in op or 'owner' in op or 'posting' in op):
-        return
-
-    title = 'Golos'
-    body = 'account @%s has been updated or had its password changed' % (
-        op['account']
-    )
-    url = '%s/@%s/permissions' % (STEEMIT_WEBCLIENT_ADDRESS, op['account'])
-    tnt_server.call(
-        'notification_add',
-        op['account'],
-        NTYPES['account_update'],
-        title,
-        body,
-        url,
-        ''
-    )
+#def processAccountUpdate(op):
+#    print(json.dumps(op, indent=4))
+#    if not ('active' in op or 'owner' in op or 'posting' in op):
+#        return
+#
+#    title = 'Golos'
+#    body = 'account @%s has been updated or had its password changed' % (
+#        op['account']
+#    )
+#    url = '%s/@%s/permissions' % (STEEMIT_WEBCLIENT_ADDRESS, op['account'])
+#    tnt_server.call(
+#        'notification_add',
+#        op['account'],
+#        NTYPES['account_update'],
+#        title,
+#        body,
+#        url,
+#        ''
+#    )
 
 
 def processOp(op_data):
@@ -266,8 +266,8 @@ def processOp(op_data):
     if op_type == 'donate':
         processDonate(op)
 
-    if op_type == 'account_update':
-        processAccountUpdate(op)
+#    if op_type == 'account_update':
+#        processAccountUpdate(op)
 
 
 def run():
