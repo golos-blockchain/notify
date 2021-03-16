@@ -41,6 +41,7 @@ followers_space = None
 chain = None
 img_proxy_prefix = 'https://steemitimages.com/'
 processed_posts = {}
+processed_messages = {}
 
 STEEMIT_WEBCLIENT_ADDRESS = os.environ.get('STEEMIT_WEBCLIENT_ADDRESS', 'https://golos.id')
 TARANTOOL_HOST = os.environ.get('TARANTOOL_HOST', '127.0.0.1')
@@ -229,6 +230,24 @@ def processDonate(op):
         ''
     )
 
+
+def processMessage(op):
+    op_json = json.loads(op['json'])
+    if not isinstance(op_json, list) or op_json[0] != 'private_message':
+        return
+    data = op_json[1]
+    pkey = data['from'] + '/' + data['to'] + '/' + data['nonce']
+    print('message: ', pkey)
+    if pkey in processed_messages:
+        return
+    processed_messages[pkey] = True
+    tnt_server.call(
+        'notification_add',
+        data['to'],
+        NTYPES['message']
+    )
+
+
 #def processAccountUpdate(op):
 #    print(json.dumps(op, indent=4))
 #    if not ('active' in op or 'owner' in op or 'posting' in op):
@@ -256,6 +275,9 @@ def processOp(op_data):
 
     if op_type == 'custom_json' and op['id'] == 'follow':
         processFollow(op)
+
+    if op_type == 'custom_json' and op['id'] == 'private_message':
+        processMessage(op)
 
     if op_type == 'comment':
         processComment(op)

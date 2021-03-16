@@ -13,7 +13,7 @@ require 'table_utils'
 --   'account_update': 9,
 --   'message': 10,
 --   'receive': 11,
---   'reserved1': 12,
+--   'donate': 12,
 --   'reserved2': 13,
 --   'reserved3': 14,
 --   'reserved4': 15,
