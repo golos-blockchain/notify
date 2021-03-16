@@ -341,6 +341,8 @@ def main():
             continue
         else:
             while True:
+                print('Started')
+                sys.stdout.flush()
                 run()
                 print('[run] exited, continue..')
 
