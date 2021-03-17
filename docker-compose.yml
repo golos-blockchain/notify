@@ -1,23 +1,24 @@
-version: '2'
-
+version: "3"
 services:
-  datafeed:
-    image: goloschain/golosnotify/datafeed
-    restart: unless-stopped
-    build:
-      context: .
-      dockerfile: Dockerfile-datafeed
-    environment:
-      - NODE_URL=http://api.golos.blckchnd.com
-      - TARANTOOL_HOST=datastore
+
   datastore:
-    image: goloschain/golosnotify/datastore
+    image: golosblockchain/web-ui:datastore
     build:
       context: .
       dockerfile: Dockerfile-datastore
-    ports:
-      - "3301:3301"
-      - "8082:8082"
     volumes:
-      - ./data:/var/lib/tarantool
-      - ./:/home/src
+      - ./tarantool:/var/lib/tarantool
+    ports:
+      - "3001:3001"
+
+  datafeed:
+    image: golosblockchain/web-ui:datafeed
+    build:
+      context: .
+      dockerfile: Dockerfile-datafeed
+    restart: unless-stopped
+    depends_on:
+      - datastore
+    environment:
+      NODE_URL: https://api.golos.id
+      TARANTOOL_HOST: datastore
