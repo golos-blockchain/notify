@@ -1,0 +1,3 @@
+[submodule "golos-python"]
+	path = golos-python
+	url = https://github.com/golos-blockchain/golos-python
