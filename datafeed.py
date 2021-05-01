@@ -242,7 +242,9 @@ def processDonate(op):
 
 def processMessage(op):
     op_json = json.loads(op['json'])
-    if not isinstance(op_json, list) or op_json[0] not in ['private_message', 'private_delete_message']:
+    if not isinstance(op_json, list):
+        return
+    if op_json[0] not in ['private_message', 'private_delete_message', 'private_mark_message']:
         return
     data = op_json[1]
     print(op_json[0], data['from'], data['to'])
@@ -251,14 +253,14 @@ def processMessage(op):
         data['from'],
         None,
         op_json,
-        op['timestamp']
+        op['timestamp_prev']
     )
     tnt_server.call(
         'notification_add',
         data['to'],
         op_json[0] == 'private_message' and NTYPES['message'] or None,
         op_json,
-        op['timestamp']
+        op['timestamp_prev']
     )
 
 

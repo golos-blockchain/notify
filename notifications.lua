@@ -21,12 +21,12 @@ require 'table_utils'
 -- }
 
 function notification_subscribe(account, subscriber_id)
-    local queue_id = account .. '_' .. subscriber_id
+    local queue_id = account:gsub('-', '_') .. '_' .. subscriber_id
     queue.create_tube(queue_id, 'fifottl', {temporary = false, if_not_exists = true, ttr = 2})
 end
 
 function notification_take(account, subscriber_id, task_ids)
-    local queue_id = account .. '_' .. subscriber_id
+    local queue_id = account:gsub('-', '_') .. '_' .. subscriber_id
 
     local the_tube = queue.tube[queue_id]
 
@@ -60,7 +60,7 @@ function notification_add(account, ntype, op_data, timestamp, title, body, url, 
 
     if op_data ~= nil then
         for id,val in pairs(queue.tube) do
-            if id:sub(1, #account) == account then
+            if id:sub(1, #account) == account:gsub('-', '_') then
                 queue.tube[id]:put({ data = op_data, timestamp = timestamp})
             end
         end
