@@ -41,7 +41,6 @@ followers_space = None
 chain = None
 img_proxy_prefix = 'https://steemitimages.com/'
 processed_posts = {}
-processed_messages = {}
 
 STEEMIT_WEBCLIENT_ADDRESS = os.environ.get('STEEMIT_WEBCLIENT_ADDRESS', 'https://golos.id')
 TARANTOOL_HOST = os.environ.get('TARANTOOL_HOST', '127.0.0.1')
@@ -121,6 +120,8 @@ def processMentions(author_account, text, op):
             'notification_add',
             mention[1:],
             NTYPES['mention'],
+            None,
+            None,
             title,
             body,
             url,
@@ -174,6 +175,8 @@ def processComment(op):
                 'notification_add',
                 op['parent_author'],
                 NTYPES['comment_reply'],
+                None,
+                None,
                 title,
                 body,
                 url,
@@ -196,6 +199,8 @@ def processTransfer(op):
         'notification_add',
         op['from'],
         NTYPES['send'],
+        None,
+        None,
         title,
         body,
         url,
@@ -207,6 +212,8 @@ def processTransfer(op):
         'notification_add',
         op['to'],
         NTYPES['receive'],
+        None,
+        None,
         title,
         body,
         url,
@@ -224,6 +231,8 @@ def processDonate(op):
         'notification_add',
         op['to'],
         NTYPES['donate'],
+        None,
+        None,
         title,
         body,
         url,
@@ -233,18 +242,25 @@ def processDonate(op):
 
 def processMessage(op):
     op_json = json.loads(op['json'])
-    if not isinstance(op_json, list) or op_json[0] != 'private_message':
+    if not isinstance(op_json, list):
+        return
+    if op_json[0] not in ['private_message', 'private_delete_message', 'private_mark_message']:
         return
     data = op_json[1]
-    pkey = data['from'] + '/' + data['to'] + '/' + data['nonce']
-    print('message: ', pkey)
-    if pkey in processed_messages:
-        return
-    processed_messages[pkey] = True
+    print(op_json[0], data['from'], data['to'])
+    tnt_server.call(
+        'notification_add',
+        data['from'],
+        None,
+        op_json,
+        op['timestamp_prev']
+    )
     tnt_server.call(
         'notification_add',
         data['to'],
-        NTYPES['message']
+        op_json[0] == 'private_message' and NTYPES['message'] or None,
+        op_json,
+        op['timestamp_prev']
     )
 
 
@@ -262,6 +278,8 @@ def processMessage(op):
 #        'notification_add',
 #        op['account'],
 #        NTYPES['account_update'],
+#        None,
+#        None,
 #        title,
 #        body,
 #        url,

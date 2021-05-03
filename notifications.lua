@@ -1,3 +1,4 @@
+queue = require 'queue'
 require 'table_utils'
 
 -- NTYPES = {
@@ -19,9 +20,30 @@ require 'table_utils'
 --   'reserved4': 15,
 -- }
 
-function notification_add(account, ntype, title, body, url, pic)
+function notification_subscribe(account, subscriber_id)
+    local queue_id = account .. '_' .. subscriber_id
+    queue.create_tube(queue_id, 'fifottl', {temporary = false, if_not_exists = true, ttr = 2})
+end
+
+function notification_take(account, subscriber_id, task_ids)
+    local queue_id = account .. '_' .. subscriber_id
+
+    local the_tube = queue.tube[queue_id]
+
+    for idx,task_id in ipairs(task_ids) do
+        pcall(the_tube.delete, the_tube, task_id)
+    end
+
+    local task = the_tube:take(60)
+    if task ~= nil then
+      task = the_tube:release(task[1])
+    end
+    return task
+end
+
+function notification_add(account, ntype, op_data, timestamp, title, body, url, pic)
   -- print('notification_push -->', account, ntype, title, body, url, pic)
-  if ntype ~= 4 then
+  if ntype ~= 4 and ntype ~= nil then
     local space = box.space.notifications
     local res = space:select{account}
     if #res > 0 then
@@ -36,16 +58,13 @@ function notification_add(account, ntype, title, body, url, pic)
     end
   end
 
-  local subscriber = box.space.webpush_subscribers:select{account}
-  if title and body and #subscriber > 0 then
-    subscriber = subscriber[1]
-    local last_delivery_time = subscriber[3]
-    local last_ntype = subscriber[4]
-    local current_time = math.floor(fiber.time())
-    if last_deliver_time == nil or (current_time - last_delivery_time) > 120 or last_ntype ~= ntype then
-      box.space.notifications_delivery_queue:auto_increment{account, ntype, title, body, url, pic}
+    if op_data ~= nil then
+        for id,val in pairs(queue.tube) do
+            if id:sub(1, #account) == account then
+                queue.tube[id]:put({ data = op_data, timestamp = timestamp})
+            end
+        end
     end
-  end
 end
 
 function notification_read(account, ntype)
