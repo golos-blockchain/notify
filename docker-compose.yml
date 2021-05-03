@@ -2,7 +2,7 @@ version: "3"
 services:
 
   datastore:
-    image: golosblockchain/web-ui:datastore
+    image: golosblockchain/notify:datastore
     build:
       context: .
       dockerfile: Dockerfile-datastore
@@ -12,7 +12,7 @@ services:
       - "3301:3301"
 
   datafeed:
-    image: golosblockchain/web-ui:datafeed
+    image: golosblockchain/notify:datafeed
     build:
       context: .
       dockerfile: Dockerfile-datafeed
@@ -20,5 +20,5 @@ services:
     depends_on:
       - datastore
     environment:
-      NODE_URL: https://api.golos.id
+      NODE_URL: https://api-full.golos.id
       TARANTOOL_HOST: datastore

@@ -45,7 +45,7 @@ processed_messages = {}
 
 STEEMIT_WEBCLIENT_ADDRESS = os.environ.get('STEEMIT_WEBCLIENT_ADDRESS', 'https://golos.id')
 TARANTOOL_HOST = os.environ.get('TARANTOOL_HOST', '127.0.0.1')
-NODE_URL = os.environ.get('NODE_URL', 'https://api.golos.id')
+NODE_URL = os.environ.get('NODE_URL', 'https://api-full.golos.id')
 
 configStorage.__setitem__('nodes', NODE_URL)
 

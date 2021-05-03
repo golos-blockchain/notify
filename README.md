@@ -24,3 +24,32 @@ or
 
 $ docker-compose exec datastore tarantoolctl connect guest@localhost:3301
 ```
+
+### Docker Compose (recommended)
+
+```
+version: "3"
+services:
+
+  datastore:
+    image: golosblockchain/notify:datastore
+    build:
+      context: .
+      dockerfile: Dockerfile-datastore
+    volumes:
+      - ./tarantool:/var/lib/tarantool
+    ports:
+      - "3301:3301"
+
+  datafeed:
+    image: golosblockchain/notify:datafeed
+    build:
+      context: .
+      dockerfile: Dockerfile-datafeed
+    restart: unless-stopped
+    depends_on:
+      - datastore
+    environment:
+      NODE_URL: https://api-full.golos.id
+      TARANTOOL_HOST: datastore
+```
