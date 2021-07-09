@@ -1,0 +1,12 @@
+FROM node:16.1
+
+RUN mkdir -p /server
+WORKDIR /server
+
+# Bundle app source
+COPY dataserver/ /server/
+WORKDIR /server
+RUN npm install
+
+EXPOSE 8805
+CMD [ "node", "index.js" ]

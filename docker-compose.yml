@@ -22,3 +22,17 @@ services:
     environment:
       NODE_URL: https://api.golos.id
       TARANTOOL_HOST: datastore
+
+  dataserver:
+    image: golosblockchain/web-ui:dataserver
+    build:
+      context: .
+      dockerfile: Dockerfile-dataserver
+    restart: unless-stopped
+    depends_on:
+      - datastore
+    environment:
+      NODE_URL: https://api.golos.id
+      TARANTOOL_HOST: datastore
+    ports:
+      - "8805:8805"
