@@ -1,0 +1,29 @@
+{
+  "name": "dataserver",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "TARANTOOL_HOST=127.0.0.1 NODE_URL=ws://127.0.0.1:8091 CHAIN_ID=5876894a41e6361bde2e73278f07340f2eb8b41c2facd29099de9deef6cdb679 nodemon",
+    "test": "jest"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fetch-cookie": "^1.0.0",
+    "golos-classic-js": "^0.8.2",
+    "koa": "^2.13.0",
+    "koa-body": "^4.2.0",
+    "koa-cors": "0.0.16",
+    "koa-livereload": "^0.2.0",
+    "koa-router": "^10.0.0",
+    "koa-session": "^3.4.0",
+    "secure-random": "^1.1.2",
+    "tarantool-driver": "^2.0.1"
+  },
+  "devDependencies": {
+    "cross-fetch": "^3.1.4",
+    "jest": "^27.0.6",
+    "nodemon": "^2.0.6"
+  }
+}

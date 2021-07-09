@@ -1,3 +1,4 @@
 *.xlog
 *.snap
-.rocks
+dataserver/node_modules
+dataserver/package-lock.json
