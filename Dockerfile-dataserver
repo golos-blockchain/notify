@@ -1,5 +1,9 @@
 FROM node:16.1
 
+# For version in healthcheck
+RUN mkdir -p /.git
+COPY .git/ /.git/
+
 RUN mkdir -p /server
 WORKDIR /server
 
@@ -7,6 +11,7 @@ WORKDIR /server
 COPY dataserver/ /server/
 WORKDIR /server
 RUN npm install
+RUN npm run build-prod
 
 EXPOSE 8805
-CMD [ "node", "index.js" ]
+CMD [ "npm", "run", "prod" ]

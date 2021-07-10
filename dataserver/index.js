@@ -9,6 +9,7 @@ const { Signature, hash, PublicKey } = require('golos-classic-js/lib/auth/ecc');
 const secureRandom = require('secure-random');
 
 const Tarantool = require('./tarantool');
+const version = require('./version');
 
 const NODE_URL = process.env.NODE_URL || 'https://api.golos.id';
 golos.config.set('websocket', NODE_URL);
@@ -25,17 +26,11 @@ const returnError = (ctx, error) => {
 };
 
 router.get('/', async (ctx) => {
-    ctx.body = {status: 'ok', data: 'OK'};
-});
-
-router.get('/healthcheck', async (ctx) => {
-    console.log('testing node', NODE_URL)
-    try {
-        await golos.api.getAccounts([]);
-        ctx.body = {status: 'ok', data: 'OK'};
-    } catch (ex) {
-        return returnError(ctx, 'Cannot connect to Golos node');
-    }
+    ctx.body = {
+        status: 'ok',
+        version,
+        date: new Date(),
+    };
 });
 
 router.post('/login_account', async (ctx) => {
@@ -106,7 +101,7 @@ router.post('/login_account', async (ctx) => {
 });
 
 router.get('/logout_account', (ctx) => {
-    this.session.a = null;
+    ctx.session.a = null;
     ctx.body = {
         status: 'ok'
     };
@@ -165,7 +160,7 @@ router.get('/take/@:account/:subscriber_id/:task_ids?', async (ctx) => {
             status: 'ok',
         };
     } catch (error) {
-        console.error(`[reqid ${this.request.header['x-request-id']}] ${this.method} ERRORLOG notifications @${account} ${error.message}`);
+        console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${account} ${error.message}`);
         ctx.body = {
             tasks: null,
             status: 'err',

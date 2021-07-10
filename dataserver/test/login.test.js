@@ -2,8 +2,11 @@ const crossFetch = require('cross-fetch');
 const golos = require('golos-classic-js');
 const {Signature, hash} = require('golos-classic-js/lib/auth/ecc');
 
-golos.config.set('websocket', 'ws://127.0.0.1:8091');
-golos.config.set('chain_id', '5876894a41e6361bde2e73278f07340f2eb8b41c2facd29099de9deef6cdb679');
+let { NODE_URL, CHAIN_ID, ACC, ACC_POSTING, ACC_ACTIVE } = process.env;
+golos.config.set('websocket', NODE_URL);
+if (CHAIN_ID) {
+    golos.config.set('chain_id', CHAIN_ID);
+}
 
 let fetch = null, cookieJar = null;
 let initCookies = () => {
@@ -25,10 +28,10 @@ const request_base = {
     }
 };
 
-test('/healthcheck: server is running and connects to Golos node', async () => {
+test('/ healthcheck: server is running and connects to Golos node', async () => {
     var resp = null;
     try {
-        resp = await fetch(HOST + '/healthcheck');
+        resp = await fetch(HOST + '/');
     } catch (err) {
         console.error('It looks like notify server is not running. It should be running to pass these tests.')
         expect(true).toBe(false);
@@ -38,12 +41,12 @@ test('/healthcheck: server is running and connects to Golos node', async () => {
     console.log('Server is running - healthcheck is good! Now test its response');
 
     expect(resp.status).toBe('ok');
-    expect(resp.data).toBe('OK');
+    expect(resp.version.length).toBeGreaterThan('1.0-xx'.length); // '1.0-dev' or longer
 });
 
 var obtainLoginChallenge = async () => {
     var body = {
-        account: 'cyberfounder',
+        account: ACC,
     };
     var request = Object.assign({}, request_base, {
         body: JSON.stringify(body),
@@ -76,7 +79,7 @@ test('/login_account - missing account', async () => {
     const signatures = {};
 
     var body = {
-        account: 'eva',
+        account: 'eveevileve',
         signatures,
     };
     var request = Object.assign({}, request_base, {
@@ -105,10 +108,10 @@ test('/login_account - wrong signature', async () => {
         const sig = Signature.signBufferSha256(bufSha, d)
         signatures[role] = sig.toHex()
     }
-    sign('posting', '5JFZC7AtEe1wF2ce6vPAUxDeevzYkPgmtR14z9ZVgvCCtrFAaLw');
+    sign('posting', ACC_ACTIVE);
 
     var body = {
-        account: 'cyberfounder',
+        account: ACC,
         signatures,
     };
     var request = Object.assign({}, request_base, {
@@ -140,7 +143,7 @@ test('/login_account', async () => {
     sign('posting', '5K1aJ8JayUA7c2Ptg9Y2DetKxSvXGXa5GCcvYeHtn1Xh3v4egPS');
 
     var body = {
-        account: 'cyberfounder',
+        account: ACC,
         signatures,
     };
     var request = Object.assign({}, request_base, {
@@ -158,13 +161,13 @@ test('/login_account', async () => {
     console.log('account tarantool guid:', json.guid);
 });
 
-jest.setTimeout(30000);
+jest.setTimeout(8000);
 
 test('/counters', async () => {
     var request = Object.assign({}, request_base, {
         method: 'get',
     });
-    var resp = await fetch(HOST + '/counters/@cyberfounder', request);
+    var resp = await fetch(HOST + `/counters/@${ACC}`, request);
     var json = await resp.json();
 
     expect(json.error).toBe(undefined);
@@ -181,12 +184,12 @@ test('/counters', async () => {
     let receive = json.counters[11] || 0;
 
     await golos.broadcast.transferAsync(
-        '5JVFFWRLwz6JoP9kguuRFfytToGU6cLgBVTL9t6NB3D3BQLbUBS',
-        'cyberfounder', 'null', '10.000 GOLOS', '');
+        ACC_ACTIVE,
+        ACC, 'null', '0.001 GOLOS', '');
 
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 3000 + 500));
 
-    var resp = await fetch(HOST + '/counters/@cyberfounder', request);
+    var resp = await fetch(HOST + `/counters/@${ACC}`, request);
     var json = await resp.json();
     expect(json.counters[0]).toBe(all + 1);
     expect(json.counters[3]).toBe(send + 1);
@@ -195,7 +198,7 @@ test('/counters', async () => {
     var request = Object.assign({}, request_base, {
         method: 'put',
     });
-    var resp = await fetch(HOST + '/counters/@cyberfounder/3', request);
+    var resp = await fetch(HOST + `/counters/@${ACC}/3`, request);
     var json = await resp.json();
     expect(json.error).toBe(undefined);
     expect(json.status).toBe('ok');

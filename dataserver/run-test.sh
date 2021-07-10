@@ -1,0 +1,10 @@
+#!/bin/sh
+
+export NODE_URL=ws://127.0.0.1:8091
+export CHAIN_ID=5876894a41e6361bde2e73278f07340f2eb8b41c2facd29099de9deef6cdb679
+
+export ACC=cyberfounder
+export ACC_POSTING=5K1aJ8JayUA7c2Ptg9Y2DetKxSvXGXa5GCcvYeHtn1Xh3v4egPS
+export ACC_ACTIVE=5JVFFWRLwz6JoP9kguuRFfytToGU6cLgBVTL9t6NB3D3BQLbUBS
+
+jest
