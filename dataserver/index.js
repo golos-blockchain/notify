@@ -101,9 +101,11 @@ router.post('/login_account', async (ctx) => {
 });
 
 router.get('/logout_account', (ctx) => {
+    const was_logged_in = !!ctx.session.a;
     ctx.session.a = null;
     ctx.body = {
-        status: 'ok'
+        status: 'ok',
+        was_logged_in,
     };
 });
 
