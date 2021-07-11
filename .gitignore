@@ -1,4 +1,5 @@
 *.xlog
 *.snap
 dataserver/node_modules
-dataserver/package-lock.json
+dataserver/cypress/screenshots
+dataserver/cypress/videos

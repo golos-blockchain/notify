@@ -1,26 +1,21 @@
-const crossFetch = require('cross-fetch');
 const golos = require('golos-classic-js');
 const {Signature, hash} = require('golos-classic-js/lib/auth/ecc');
 
-let { NODE_URL, CHAIN_ID, ACC, ACC_POSTING, ACC_ACTIVE } = process.env;
+const log = (msg) => {
+    console.log(msg);
+    cy.log(msg);
+};
+
+let { NODE_URL, CHAIN_ID, ACC, ACC_POSTING, ACC_ACTIVE } = Cypress.env();
 golos.config.set('websocket', NODE_URL);
 if (CHAIN_ID) {
     golos.config.set('chain_id', CHAIN_ID);
 }
 
-let fetch = null, cookieJar = null;
-let initCookies = () => {
-    const fc = require('fetch-cookie');
-    cookieJar = new fc.toughCookie.CookieJar();
-    fetch = fc(crossFetch, cookieJar);
-};
-initCookies();
-
 const HOST = 'http://localhost:8805';
 
 const request_base = {
     method: 'post',
-    mode: 'no-cors',
     credentials: 'include',
     headers: {
         Accept: 'application/json',
@@ -28,20 +23,20 @@ const request_base = {
     }
 };
 
-test('/ healthcheck: server is running and connects to Golos node', async () => {
+it('/ healthcheck: server is running and connects to Golos node', async () => {
     var resp = null;
     try {
         resp = await fetch(HOST + '/');
     } catch (err) {
-        console.error('It looks like notify server is not running. It should be running to pass these tests.')
-        expect(true).toBe(false);
+        log('It looks like notify server is not running. It should be running to pass these tests.')
+        expect(true).to.equal(false);
     }
     resp = await resp.json();
 
-    console.log('Server is running - healthcheck is good! Now test its response');
+    log('Server is running - healthcheck is good! Now test its response');
 
-    expect(resp.status).toBe('ok');
-    expect(resp.version.length).toBeGreaterThan('1.0-xx'.length); // '1.0-dev' or longer
+    expect(resp.status).to.equal('ok');
+    expect(resp.version.length).to.be.at.least('1.0-dev'.length);
 });
 
 var obtainLoginChallenge = async () => {
@@ -55,26 +50,20 @@ var obtainLoginChallenge = async () => {
     var resp = await fetch(HOST + '/login_account', request);
     
     var json = await resp.json();
-    expect(json.status).toBe('ok');
-    expect(typeof json.login_challenge).toBe('string');
-    expect(json.login_challenge.length).toBe(16*2);
-    console.log('login_challenge is ', json.login_challenge);
-
-    var cookies = cookieJar.getCookiesSync(HOST);
-    expect(cookies.length).toBe(2);
-    console.log('cookies are also ok');
+    expect(json.status).to.equal('ok');
+    expect(typeof json.login_challenge).to.equal('string');
+    expect(json.login_challenge.length).to.equal(16*2);
+    log('login_challenge is ' + json.login_challenge);
 
     return json.login_challenge;
 };
 
-test('/login_account - missing account', async () => {
-    initCookies();
-
-    console.log('step 1: login_challenge')
+it('/login_account - missing account', async () => {
+    log('step 1: login_challenge')
 
     var login_challenge = await obtainLoginChallenge();
 
-    console.log('step 2: signing and authorizing')
+    log('step 2: signing and authorizing')
 
     const signatures = {};
 
@@ -89,16 +78,16 @@ test('/login_account - missing account', async () => {
     var resp = await fetch(HOST + '/login_account', request);
 
     var json = await resp.json();
-    expect(json.error).toBe('missing blockchain account');
-    expect(json.status).toBe('err');
+    expect(json.error).to.equal('missing blockchain account');
+    expect(json.status).to.equal('err');
 });
 
-test('/login_account - wrong signature', async () => {
-    console.log('step 1: login_challenge')
+it('/login_account - wrong signature', async () => {
+    log('step 1: login_challenge')
 
     var login_challenge = await obtainLoginChallenge();
 
-    console.log('step 2: signing and authorizing')
+    log('step 2: signing and authorizing')
 
     const signatures = {};
     const challenge = { token: login_challenge };
@@ -121,16 +110,16 @@ test('/login_account - wrong signature', async () => {
     var resp = await fetch(HOST + '/login_account', request);
 
     var json = await resp.json();
-    expect(json.error).toBe('wrong signatures');
-    expect(json.status).toBe('err');
+    expect(json.error).to.equal('wrong signatures');
+    expect(json.status).to.equal('err');
 });
 
-test('/login_account', async () => {
-    console.log('step 1: login_challenge')
+it('/login_account - good + /counters', async () => {
+    log('step 1: login_challenge')
 
     var login_challenge = await obtainLoginChallenge();
 
-    console.log('step 2: signing and authorizing')
+    log('step 2: signing and authorizing')
 
     const signatures = {};
     const challenge = { token: login_challenge };
@@ -153,30 +142,26 @@ test('/login_account', async () => {
     var resp = await fetch(HOST + '/login_account', request);
 
     var json = await resp.json();
-    expect(json.error).toBe(undefined);
-    expect(json.status).toBe('ok');
-    expect(typeof json.guid).toBe('string');
-    expect(json.guid.length).toBeGreaterThan(0);
+    expect(json.error).to.equal(undefined);
+    expect(json.status).to.equal('ok');
+    expect(typeof json.guid).to.equal('string');
+    expect(json.guid.length).to.be.above(0);
 
-    console.log('account tarantool guid:', json.guid);
-});
+    log('account tarantool guid:', json.guid);
 
-jest.setTimeout(8000);
-
-test('/counters', async () => {
     var request = Object.assign({}, request_base, {
         method: 'get',
     });
     var resp = await fetch(HOST + `/counters/@${ACC}`, request);
     var json = await resp.json();
 
-    expect(json.error).toBe(undefined);
-    expect(json.status).toBe('ok');
+    expect(json.error).to.equal(undefined);
+    expect(json.status).to.equal('ok');
 
     try {
-        expect(json.counters.length).toBe(0);
+        expect(json.counters.length).to.equal(0);
     } catch {
-        expect(json.counters.length).toBe(16);
+        expect(json.counters.length).to.equal(16);
     }
 
     let all = json.counters[0] || 0;
@@ -191,17 +176,17 @@ test('/counters', async () => {
 
     var resp = await fetch(HOST + `/counters/@${ACC}`, request);
     var json = await resp.json();
-    expect(json.counters[0]).toBe(all + 1);
-    expect(json.counters[3]).toBe(send + 1);
-    expect(json.counters[11]).toBe(receive);
+    expect(json.counters[0]).to.equal(all + 1);
+    expect(json.counters[3]).to.equal(send + 1);
+    expect(json.counters[11]).to.equal(receive);
 
     var request = Object.assign({}, request_base, {
         method: 'put',
     });
     var resp = await fetch(HOST + `/counters/@${ACC}/3`, request);
     var json = await resp.json();
-    expect(json.error).toBe(undefined);
-    expect(json.status).toBe('ok');
-    expect(json.counters.length).toBe(16);
-    expect(json.counters[3]).toBe(0);
+    expect(json.error).to.equal(undefined);
+    expect(json.status).to.equal('ok');
+    expect(json.counters.length).to.equal(16);
+    expect(json.counters[3]).to.equal(0);
 });

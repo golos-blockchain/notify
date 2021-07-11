@@ -7,7 +7,7 @@
     "build-prod": "./build-version.sh",
     "start": "./run-dev.sh",
     "prod": "node index.js",
-    "test": "./run-test.sh"
+    "test": "cypress open"
   },
   "author": "",
   "license": "MIT",
@@ -24,8 +24,7 @@
     "tarantool-driver": "^2.0.1"
   },
   "devDependencies": {
-    "cross-fetch": "^3.1.4",
-    "jest": "^27.0.6",
+    "cypress": "^7.7.0",
     "nodemon": "^2.0.6"
   }
 }
