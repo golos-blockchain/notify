@@ -34,5 +34,6 @@ services:
     environment:
       NODE_URL: https://api.golos.id
       TARANTOOL_HOST: datastore
+      SESSION_SECRET: should-be-really-generated-secret
     ports:
       - "8805:8805"

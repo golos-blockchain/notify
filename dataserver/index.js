@@ -17,6 +17,8 @@ if (process.env.CHAIN_ID) {
     golos.config.set('chain_id', process.env.CHAIN_ID);
 }
 
+const SESSION_SECRET = process.env.SESSION_SECRET || 'should-be-really-generated-secret';
+
 const app = new koa();
 
 const router = new koaRouter();
@@ -244,7 +246,7 @@ router.put('/counters/@:account/:ids', async (ctx) => {
 
 app.use(livereload());
 app.use(cors({ credentials: true }));
-app.keys = ['your-session-secret'];
+app.keys = [SESSION_SECRET];
 app.use(session({}, app));
 app.use(koaBody());
 app.use(router.routes());
