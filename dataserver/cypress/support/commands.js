@@ -11,6 +11,14 @@
 //
 // -- This is a parent command --
 // Cypress.Commands.add('login', (email, password) => { ... })
+
+let { ACC } = Cypress.env();
+
+Cypress.Commands.add('log2', (msg) => {
+    console.log(msg);
+    cy.log(msg);
+});
+
 //
 //
 // -- This is a child command --
