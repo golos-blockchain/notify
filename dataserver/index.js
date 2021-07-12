@@ -48,6 +48,7 @@ router.post('/login_account', async (ctx) => {
         }
         ctx.body = {
             login_challenge,
+            already_authorized: ctx.session.a,
             status: 'ok',
         }
     } else { // step 2
