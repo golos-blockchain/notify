@@ -1,6 +1,6 @@
 const koa = require('koa');
 const koaBody = require('koa-body');
-const session = require('koa-session');
+const session = require('koa-session-auth');
 const koaRouter = require('koa-router');
 const cors = require('koa-cors');
 const livereload = require('koa-livereload');
@@ -36,7 +36,9 @@ router.get('/', async (ctx) => {
 });
 
 router.post('/login_account', async (ctx) => {
-    const { account, signatures } = ctx.request.body;
+    let params = ctx.request.body;
+    if (typeof(params) === 'string') params = JSON.parse(params);
+    const { account, signatures } = params;
     if (!account) {
         return returnError(ctx, 'account is required');
     }
@@ -247,9 +249,15 @@ router.put('/counters/@:account/:ids', async (ctx) => {
 });
 
 app.use(livereload());
-app.use(cors({ credentials: true }));
+app.use(cors({ credentials: true,
+    expose: ['X-Session'],
+}));
 app.keys = [SESSION_SECRET];
-app.use(session({}, app));
+app.use(session({
+    useToken: true,
+    useCookie: false,
+    key: 'X-Session',
+}, app));
 app.use(koaBody());
 app.use(router.routes());
 app.use(router.allowedMethods());

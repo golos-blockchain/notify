@@ -35,6 +35,8 @@ global.obtainLoginChallenge = async (acc) => {
     expect(json.login_challenge.length).to.equal(16*2);
     cy.log2('login_challenge is ' + json.login_challenge);
 
+    global.session = resp.headers.get('X-Session');
+
     return json.login_challenge;
 };
 
@@ -55,9 +57,14 @@ global.signAndAuth = async (login_challenge, acc, postingKey) => {
     };
     var request = Object.assign({}, request_base, {
         body: JSON.stringify(body),
+        headers: {
+            'X-Session': global.session,
+        },
     });
 
     var resp = await fetch(global.HOST + '/login_account', request);
+
+    global.session = resp.headers.get('X-Session');
 
     var json = await resp.json();
     return json;

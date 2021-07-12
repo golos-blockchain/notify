@@ -9,13 +9,16 @@ if (CHAIN_ID) {
 
 const HOST = 'http://localhost:8805';
 
-const request_base = {
-    method: 'post',
-    credentials: 'include',
-    headers: {
-        Accept: 'application/json',
-        'Content-type': 'application/json'
-    }
+const getRequestBase = () => {
+    return {
+        method: 'post',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'Content-type': 'application/json',
+            'X-Session': global.session,
+        },
+    };
 };
 
 it('/ healthcheck: server is running and connects to Golos node', async () => {
@@ -47,7 +50,7 @@ it('/login_account - missing account', async () => {
         account: 'eveevileve',
         signatures,
     };
-    var request = Object.assign({}, request_base, {
+    var request = Object.assign({}, getRequestBase(), {
         body: JSON.stringify(body),
     });
 
@@ -95,11 +98,11 @@ it('/logout_account', async () => {
     expect(json.error).to.equal(undefined);
     expect(json.status).to.equal('ok');
 
-    var request = Object.assign({}, request_base, {
+    cy.log2('Logout...');
+
+    var request = Object.assign({}, getRequestBase(), {
         method: 'get',
     });
-
-    cy.log2('Logout...');
 
     var resp = await fetch(HOST + '/logout_account', request);
 
@@ -108,7 +111,13 @@ it('/logout_account', async () => {
     expect(json.status).to.equal('ok');
     expect(json.was_logged_in).to.equal(true);
 
+    global.session = resp.headers.get('X-Session');
+
     cy.log2('Logout twice...');
+
+    var request = Object.assign({}, getRequestBase(), {
+        method: 'get',
+    });
 
     var resp = await fetch(HOST + '/logout_account', request);
 
@@ -129,7 +138,7 @@ it('/counters', async () => {
 
     cy.log2('Checking counters before operation...')
 
-    var request = Object.assign({}, request_base, {
+    var request = Object.assign({}, getRequestBase(), {
         method: 'get',
     });
     var resp = await fetch(HOST + `/counters/@${ACC}`, request);
@@ -166,7 +175,7 @@ it('/counters', async () => {
 
     cy.log2('Clearing counters and checking them...')
 
-    var request = Object.assign({}, request_base, {
+    var request = Object.assign({}, getRequestBase(), {
         method: 'put',
     });
     var resp = await fetch(HOST + `/counters/@${ACC}/3`, request);
