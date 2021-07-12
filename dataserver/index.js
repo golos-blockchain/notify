@@ -112,7 +112,8 @@ router.get('/logout_account', (ctx) => {
 });
 
 router.get('/subscribe/@:account/:subscriber_id?', async (ctx) => {
-    const { account, subscriber_id } = ctx.params;
+    const { account } = ctx.params;
+    let { subscriber_id } = ctx.params;
 
     if (!ctx.session.a) {
         return returnError(ctx, 'Access denied - not authorized');
