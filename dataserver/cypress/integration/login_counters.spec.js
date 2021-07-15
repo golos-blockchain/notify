@@ -21,6 +21,10 @@ const getRequestBase = () => {
     };
 };
 
+beforeEach(function() {
+    delete global.session;
+});
+
 it('/ healthcheck: server is running and connects to Golos node', async () => {
     var resp = null;
     try {

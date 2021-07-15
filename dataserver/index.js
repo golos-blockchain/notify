@@ -10,6 +10,7 @@ const secureRandom = require('secure-random');
 
 const Tarantool = require('./tarantool');
 const version = require('./version');
+const { returnError, checkOrigin } = require('./utils');
 
 const NODE_URL = process.env.NODE_URL || 'https://api.golos.id';
 golos.config.set('websocket', NODE_URL);
@@ -22,10 +23,6 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'should-be-really-generated
 const app = new koa();
 
 const router = new koaRouter();
-
-const returnError = (ctx, error) => {
-    ctx.body = {status: 'err', error: error};
-};
 
 router.get('/', async (ctx) => {
     ctx.body = {
@@ -44,6 +41,10 @@ router.post('/login_account', async (ctx) => {
     }
     let { login_challenge } = ctx.session;
     if (!signatures) { // step 1
+        let originErr = checkOrigin(ctx);
+        if (originErr) {
+            return returnError(ctx, originErr);
+        }
         if (!login_challenge) {
             login_challenge = secureRandom.randomBuffer(16).toString('hex');
             ctx.session.login_challenge = login_challenge;
