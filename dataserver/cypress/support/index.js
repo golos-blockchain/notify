@@ -1,17 +1,34 @@
-const {Signature, hash} = require('golos-classic-js/lib/auth/ecc');
+global.golos = require('golos-classic-js');
+const { Signature, hash } = require('golos-classic-js/lib/auth/ecc');
+
+let { NODE_URL, CHAIN_ID } = Cypress.env();
+golos.config.set('websocket', NODE_URL);
+if (CHAIN_ID) {
+    golos.config.set('chain_id', CHAIN_ID);
+}
 
 global.HOST = 'http://localhost:8805';
 
-global.request_base = {
-    method: 'post',
-    credentials: 'include',
-    headers: {
-        Accept: 'application/json',
-        'Content-type': 'application/json'
-    }
+global.log = (msg) => {
+    console.log(msg);
+    cy.log(msg);
 };
 
-let { NODE_URL, CHAIN_ID, ACC, ACC_POSTING, ACC_ACTIVE } = Cypress.env();
+global.getRequestBase = function() {
+    return {
+        method: 'post',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'Content-type': 'application/json',
+            'X-Session': global.session,
+        },
+    };
+};
+
+beforeEach(function() {
+    delete global.session;
+});
 
 // Import commands.js using ES2015 syntax:
 import './commands'
@@ -23,7 +40,7 @@ global.obtainLoginChallenge = async (acc) => {
     var body = {
         account: acc,
     };
-    var request = Object.assign({}, global.request_base, {
+    var request = Object.assign({}, global.getRequestBase(), {
         body: JSON.stringify(body),
     });
 
@@ -33,7 +50,7 @@ global.obtainLoginChallenge = async (acc) => {
     expect(json.status).to.equal('ok');
     expect(typeof json.login_challenge).to.equal('string');
     expect(json.login_challenge.length).to.equal(16*2);
-    cy.log2('login_challenge is ' + json.login_challenge);
+    global.log('login_challenge is ' + json.login_challenge);
 
     global.session = resp.headers.get('X-Session');
 
@@ -55,7 +72,7 @@ global.signAndAuth = async (login_challenge, acc, postingKey) => {
         account: acc,
         signatures,
     };
-    var request = Object.assign({}, request_base, {
+    var request = Object.assign({}, global.getRequestBase(), {
         body: JSON.stringify(body),
         headers: {
             'X-Session': global.session,
