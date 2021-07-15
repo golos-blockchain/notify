@@ -35,9 +35,9 @@ it('/login_account - missing account', async function() {
         account: 'eveevileve',
         signatures,
     };
-    var request = Object.assign({}, getRequestBase(), {
+    var request = {...getRequestBase(),
         body: JSON.stringify(body),
-    });
+    };
 
     var resp = await fetch(global.HOST + '/login_account', request);
 
@@ -85,9 +85,9 @@ it('/logout_account', async function() {
 
     global.log('Logout...');
 
-    var request = Object.assign({}, getRequestBase(), {
+    var request = {...getRequestBase(),
         method: 'get',
-    });
+    };
 
     var resp = await fetch(global.HOST + '/logout_account', request);
 
@@ -100,9 +100,9 @@ it('/logout_account', async function() {
 
     global.log('Logout twice...');
 
-    var request = Object.assign({}, getRequestBase(), {
+    var request = {...getRequestBase(),
         method: 'get',
-    });
+    };
 
     var resp = await fetch(global.HOST + '/logout_account', request);
 

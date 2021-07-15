@@ -72,12 +72,12 @@ global.signAndAuth = async (login_challenge, acc, postingKey) => {
         account: acc,
         signatures,
     };
-    var request = Object.assign({}, global.getRequestBase(), {
+    var request = {...global.getRequestBase(),
         body: JSON.stringify(body),
         headers: {
             'X-Session': global.session,
         },
-    });
+    };
 
     var resp = await fetch(global.HOST + '/login_account', request);
 

@@ -19,9 +19,9 @@ it('/counters', async function() {
 
     global.log('Checking counters before operation...')
 
-    var request = Object.assign({}, getRequestBase(), {
+    var request = {...getRequestBase(),
         method: 'get',
-    });
+    };
     var resp = await fetch(global.HOST + `/counters/@${ACC}`, request);
     var json = await resp.json();
 
@@ -56,9 +56,9 @@ it('/counters', async function() {
 
     global.log('Clearing counters and checking them...')
 
-    var request = Object.assign({}, getRequestBase(), {
+    var request = {...getRequestBase(),
         method: 'put',
-    });
+    };
     var resp = await fetch(global.HOST + `/counters/@${ACC}/3`, request);
     var json = await resp.json();
     expect(json.error).to.equal(undefined);
