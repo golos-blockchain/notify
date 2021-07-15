@@ -9,7 +9,7 @@ if (CHAIN_ID) {
 
 const HOST = 'http://localhost:8805';
 
-const getRequestBase = () => {
+const getRequestBase = function() {
     return {
         method: 'post',
         credentials: 'include',
@@ -25,7 +25,7 @@ beforeEach(function() {
     delete global.session;
 });
 
-it('/ healthcheck: server is running and connects to Golos node', async () => {
+it('/ healthcheck: server is running and connects to Golos node', async function() {
     var resp = null;
     try {
         resp = await fetch(HOST + '/');
@@ -41,7 +41,7 @@ it('/ healthcheck: server is running and connects to Golos node', async () => {
     expect(resp.version.length).to.be.at.least('1.0-dev'.length);
 });
 
-it('/login_account - missing account', async () => {
+it('/login_account - missing account', async function() {
     cy.log2('step 1: login_challenge')
 
     var login_challenge = await global.obtainLoginChallenge('eveevileve');
@@ -65,7 +65,7 @@ it('/login_account - missing account', async () => {
     expect(json.status).to.equal('err');
 });
 
-it('/login_account - wrong signature', async () => {
+it('/login_account - wrong signature', async function() {
     cy.log2('step 1: login_challenge')
 
     var login_challenge = await global.obtainLoginChallenge(ACC);
@@ -77,7 +77,7 @@ it('/login_account - wrong signature', async () => {
     expect(json.status).to.equal('err');
 });
 
-it('/login_account - good', async () => {
+it('/login_account - good', async function() {
     cy.log2('step 1: login_challenge')
 
     var login_challenge = await global.obtainLoginChallenge(ACC);
@@ -93,7 +93,7 @@ it('/login_account - good', async () => {
     cy.log2('account tarantool guid:', json.guid);
 });
 
-it('/logout_account', async () => {
+it('/logout_account', async function() {
     cy.log2('Login...')
 
     var login_challenge = await global.obtainLoginChallenge(ACC);
@@ -131,7 +131,7 @@ it('/logout_account', async () => {
     expect(json.was_logged_in).to.equal(false);
 });
 
-it('/counters', async () => {
+it('/counters', async function() {
     cy.log2('Login...')
 
     var login_challenge = await global.obtainLoginChallenge(ACC);
