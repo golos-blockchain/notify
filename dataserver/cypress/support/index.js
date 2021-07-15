@@ -47,6 +47,7 @@ global.obtainLoginChallenge = async (acc) => {
     var resp = await fetch(global.HOST + '/login_account', request);
 
     var json = await resp.json();
+    expect(json.error).to.equal(undefined);
     expect(json.status).to.equal('ok');
     expect(typeof json.login_challenge).to.equal('string');
     expect(json.login_challenge.length).to.equal(16*2);
