@@ -20,13 +20,19 @@ require 'table_utils'
 --   'reserved4': 15,
 -- }
 
-function notification_subscribe(account, subscriber_id)
-    local queue_id = account:gsub('-', '_') .. '_' .. subscriber_id
+function notification_subscribe(account, ntypes)
+    account = account:gsub('-', '_')
+    local q = box.space.notification_queues:auto_increment{account, ntypes}
+
+    local queue_id = account .. '_' .. q[1]
     queue.create_tube(queue_id, 'fifottl', {temporary = false, if_not_exists = true, ttr = 2})
+
+    return q[1]
 end
 
 function notification_take(account, subscriber_id, task_ids)
-    local queue_id = account:gsub('-', '_') .. '_' .. subscriber_id
+    account = account:gsub('-', '_')
+    local queue_id = account .. '_' .. subscriber_id
 
     local the_tube = queue.tube[queue_id]
 
@@ -38,12 +44,23 @@ function notification_take(account, subscriber_id, task_ids)
     if task ~= nil then
       task = the_tube:release(task[1])
     end
-    return task
+
+    local tasks = {}
+    if task ~= nil then
+      tasks[1] = {
+        id = task[1],
+        scope = task[3].scope,
+        data = task[3].data,
+        timestamp = task[3].timestamp
+      }
+    end
+
+    return { tasks = tasks }
 end
 
-function notification_add(account, ntype, op_data, timestamp, title, body, url, pic)
-  -- print('notification_push -->', account, ntype, title, body, url, pic)
-  if ntype ~= 4 and ntype ~= nil then
+function notification_add(account, ntype, add_counter, op_data, timestamp)
+  -- print('notification_push -->', account, ntype, add_counter, op_data, timestamp)
+  if ntype ~= 4 and ntype ~= nil and add_counter then
     local space = box.space.notifications
     local res = space:select{account}
     if #res > 0 then
@@ -59,9 +76,17 @@ function notification_add(account, ntype, op_data, timestamp, title, body, url, 
   end
 
     if op_data ~= nil then
-        for id,val in pairs(queue.tube) do
-            if id:sub(1, #account) == account:gsub('-', '_') then
-                queue.tube[id]:put({ data = op_data, timestamp = timestamp})
+        account = account:gsub('-', '_')
+        local qs = box.space.notification_queues.index.by_acc_subscriber:select{account}
+        for i,val in ipairs(qs) do
+            local q_ntype = val[3]
+            if q_ntype['0'] or q_ntype[tostring(ntype)] then
+                local queue_id = val[2] .. '_' .. val[1]
+                -- if it is not custom_json
+                if not op_data[1] then
+                  op_data = { op_data['type'], op_data }
+                end
+                queue.tube[queue_id]:put({ scope = ntype, data = op_data, timestamp = timestamp})
             end
         end
     end

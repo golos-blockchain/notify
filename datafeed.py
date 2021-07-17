@@ -111,21 +111,13 @@ def processMentions(author_account, text, op):
             # don't notify on self-mentions
             continue
         print('--- mention: ', what, url, mention, mention[1:])
-        title = 'Golos'
-        body = '@%s mentioned you in a %s' % (op['author'], what)
-        profile = author_account.profile
-        pic = img_proxy_prefix + profile['profile_image'] \
-            if profile and 'profile_image' in profile else ''
         tnt_server.call(
             'notification_add',
             mention[1:],
             NTYPES['mention'],
-            None,
-            None,
-            title,
-            body,
-            url,
-            pic
+            True,
+            op,
+            op['timestamp_prev']
         )
 
 
@@ -138,7 +130,10 @@ def processFollow(op):
     tnt_server.call(
         'notification_add',
         data['following'],
-        NTYPES['follow']
+        NTYPES['follow'],
+        True,
+        op_json,
+        op['timestamp_prev']
     )
 
 
@@ -162,81 +157,58 @@ def processComment(op):
     if op['parent_author']:
         if op['parent_author'] != op['author']:
             # no need to notify self of own comments
-            title = 'Golos'
-            body = '@%s replied to your post or comment' % (op['author'])
-            url = '%s/@%s/recent-replies' % (
-                STEEMIT_WEBCLIENT_ADDRESS,
-                op['parent_author']
-            )
-            profile = author_account.profile
-            pic = img_proxy_prefix + profile['profile_image'] \
-                if profile and 'profile_image' in profile else ''
             tnt_server.call(
                 'notification_add',
                 op['parent_author'],
                 NTYPES['comment_reply'],
-                None,
-                None,
-                title,
-                body,
-                url,
-                pic
+                True,
+                op,
+                op['timestamp_prev']
             )
     else:
         followers = getFollowers(author_account)
         for follower in followers:
-            tnt_server.call('notification_add', follower, NTYPES['feed'])
+            tnt_server.call('notification_add',
+                follower,
+                NTYPES['feed'],
+                True,
+                op,
+                op['timestamp_prev']
+            )
 
 
 def processTransfer(op):
     if op['from'] == op['to']:
         return
     print("transfer", op['from'], op['to'])
-    title = 'Golos'
-    body = 'you transfered %s to @%s' % (op['amount'], op['to'])
-    url = '%s/@%s/transfers' % (STEEMIT_WEBCLIENT_ADDRESS, op['from'])
     tnt_server.call(
         'notification_add',
         op['from'],
         NTYPES['send'],
-        None,
-        None,
-        title,
-        body,
-        url,
-        ''
+        True,
+        op,
+        op['timestamp_prev']
     )
-    body = 'you received %s from @%s' % (op['amount'], op['from'])
-    url = '%s/@%s/transfers' % (STEEMIT_WEBCLIENT_ADDRESS, op['to'])
     tnt_server.call(
         'notification_add',
         op['to'],
         NTYPES['receive'],
-        None,
-        None,
-        title,
-        body,
-        url,
-        ''
+        True,
+        op,
+        op['timestamp_prev']
     )
 
 def processDonate(op):
     if op['from'] == op['to']:
         return
     print("donate", op['from'], op['to'])
-    title = 'Golos'
-    body = 'you received %s donate from @%s' % (op['amount'], op['from'])
-    url = '%s/@%s/donates-to' % (STEEMIT_WEBCLIENT_ADDRESS, op['to'])
     tnt_server.call(
         'notification_add',
         op['to'],
         NTYPES['donate'],
-        None,
-        None,
-        title,
-        body,
-        url,
-        ''
+        True,
+        op,
+        op['timestamp_prev']
     )
 
 
@@ -251,14 +223,16 @@ def processMessage(op):
     tnt_server.call(
         'notification_add',
         data['from'],
-        None,
+        NTYPES['message'],
+        False,
         op_json,
         op['timestamp_prev']
     )
     tnt_server.call(
         'notification_add',
         data['to'],
-        op_json[0] == 'private_message' and NTYPES['message'] or None,
+        NTYPES['message'],
+        op_json[0] == 'private_message' and True or False,
         op_json,
         op['timestamp_prev']
     )
@@ -269,21 +243,13 @@ def processMessage(op):
 #    if not ('active' in op or 'owner' in op or 'posting' in op):
 #        return
 #
-#    title = 'Golos'
-#    body = 'account @%s has been updated or had its password changed' % (
-#        op['account']
-#    )
-#    url = '%s/@%s/permissions' % (STEEMIT_WEBCLIENT_ADDRESS, op['account'])
 #    tnt_server.call(
 #        'notification_add',
 #        op['account'],
 #        NTYPES['account_update'],
-#        None,
-#        None,
-#        title,
-#        body,
-#        url,
-#        ''
+#        True,
+#        op,
+#        op['timestamp_prev']
 #    )
 
 

@@ -4,6 +4,22 @@ allowedClients = allowedClients.split(' ').filter(el => {
     return el.length !== 0;
 });
 
+const NTYPES = [
+/*  0 */    'total',
+/*  1 */    'feed',
+/*  2 */    'reward',
+/*  3 */    'send',
+/*  4 */    'mention',
+/*  5 */    'follow',
+/*  6 */    'vote',
+/*  7 */    'comment_reply',
+/*  8 */    'post_reply',
+/*  9 */    'account_update',
+/* 10 */    'message',
+/* 11 */    'receive',
+/* 12 */    'donate',
+];
+
 const returnError = (ctx, error) => {
     ctx.body = {status: 'err', error: error};
 };
@@ -43,6 +59,7 @@ const checkOrigin = (ctx) => {
 };
 
 module.exports = {
+    NTYPES,
     returnError,
     checkOrigin,
 };

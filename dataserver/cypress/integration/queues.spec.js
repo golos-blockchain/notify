@@ -1,6 +1,6 @@
 const { golos } = global;
 
-let { ACC, ACC_POSTING, ACC_ACTIVE } = Cypress.env();
+let { ACC, ACC2, ACC_POSTING, ACC_ACTIVE } = Cypress.env();
 
 let { NODE_URL, CHAIN_ID } = Cypress.env();
 golos.config.set('websocket', NODE_URL);
@@ -8,183 +8,155 @@ if (CHAIN_ID) {
     golos.config.set('chain_id', CHAIN_ID);
 }
 
-it('/subscribe - cross-account', async function() {
-    global.log('Login...')
+describe('queues - lifecycle tests', function () {
+    it('/subscribe - cross-account', async function() {
+        global.log('Login...')
 
-    var login_challenge = await global.obtainLoginChallenge(ACC);
+        var login_challenge = await global.obtainLoginChallenge(ACC);
 
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
-    expect(json.error).to.equal(undefined);
-    expect(json.status).to.equal('ok');
+        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
 
-    global.log('Test...')
+        global.log('Test...')
 
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/subscribe/@test`, request);
-    var json = await resp.json();
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/subscribe/@test/send`, request);
+        var json = await resp.json();
 
-    expect(json.error).to.equal('Access denied - wrong account');
-    expect(json.status).to.equal('err');
-});
+        expect(json.error).to.equal('Access denied - wrong account');
+        expect(json.status).to.equal('err');
+    });
 
-it('/subscribe - without login', async function() {
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/subscribe/@${ACC}`, request);
-    var json = await resp.json();
+    it('/subscribe - without login', async function() {
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/subscribe/@${ACC}/send`, request);
+        var json = await resp.json();
 
-    expect(json.error).to.equal('Access denied - not authorized');
-    expect(json.status).to.equal('err');
-});
+        expect(json.error).to.equal('Access denied - not authorized');
+        expect(json.status).to.equal('err');
+    });
 
-it('/subscribe - good', async function() {
-    global.log('Login...')
+    it('/subscribe - good', async function() {
+        global.log('Login...')
 
-    var login_challenge = await global.obtainLoginChallenge(ACC);
+        var login_challenge = await global.obtainLoginChallenge(ACC);
 
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
-    expect(json.error).to.equal(undefined);
-    expect(json.status).to.equal('ok');
+        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
 
-    global.log('Test...')
+        global.log('Test...')
 
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/subscribe/@${ACC}`, request);
-    var json = await resp.json();
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/subscribe/@${ACC}/send`, request);
+        var json = await resp.json();
 
-    expect(json.error).to.equal(undefined);
-    expect(typeof json.subscriber_id).to.equal('number');
-    expect(json.status).to.equal('ok');
+        expect(json.error).to.equal(undefined);
+        expect(typeof json.subscriber_id).to.equal('number');
+        expect(json.status).to.equal('ok');
 
-    global.log('subscriber_id' + json.subscriber_id);
+        global.log('subscriber_id' + json.subscriber_id);
+    });
 
-    global.log('Repeat with same subscriber_id...')
+    it('/take - cross-account, no subscribe', async function() {
+        global.log('Login...')
 
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/subscribe/@${ACC}/${json.subscriber_id}`, request);
-    var json = await resp.json();
+        var login_challenge = await global.obtainLoginChallenge(ACC);
 
-    expect(json.error).to.equal(undefined);
-    expect(typeof json.subscriber_id).to.equal('string'); // not number...
-    expect(json.status).to.equal('ok');
+        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
 
-    global.log('subscriber_id' + json.subscriber_id);
-});
+        global.log('Test...')
 
-it('/subscribe - wrong subscriber_id', async function() {
-    global.log('Login...')
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/take/@test/1234`, request);
+        var json = await resp.json();
 
-    var login_challenge = await global.obtainLoginChallenge(ACC);
+        expect(json.error).to.equal('Access denied - wrong account');
+        expect(json.status).to.equal('err');
+    })
 
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
-    expect(json.error).to.equal(undefined);
-    expect(json.status).to.equal('ok');
+    it('/take - no login, no subscribe', async function() {
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/take/@test/1234`, request);
+        var json = await resp.json();
 
-    global.log('Test...')
+        expect(json.error).to.equal('Access denied - not authorized');
+        expect(json.status).to.equal('err');
+    })
 
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/subscribe/@${ACC}/notanumber`, request);
-    var json = await resp.json();
+    it('/take - login, but no subscribe', async function() {
+        global.log('Login...')
 
-    expect(json.error).to.equal(undefined);
-    expect(json.status).to.equal('ok');
+        var login_challenge = await global.obtainLoginChallenge(ACC);
 
-    global.log('subscriber_id' + json.subscriber_id);
-});
+        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
 
-it('/take - cross-account, no subscribe', async function() {
-    global.log('Login...')
+        global.log('Test...')
 
-    var login_challenge = await global.obtainLoginChallenge(ACC);
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/take/@${ACC}/1234`, request);
+        var json = await resp.json();
 
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
-    expect(json.error).to.equal(undefined);
-    expect(json.status).to.equal('ok');
+        expect(json.error).to.equal('Tarantool error');
+        expect(json.status).to.equal('err');
+    })
 
-    global.log('Test...')
+    it('/take - good', async function() {
+        global.log('Login...')
 
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/take/@test/1234`, request);
-    var json = await resp.json();
+        var login_challenge = await global.obtainLoginChallenge(ACC);
 
-    expect(json.error).to.equal('Access denied - wrong account');
-    expect(json.status).to.equal('err');
-})
+        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
 
-it('/take - no login, no subscribe', async function() {
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/take/@test/1234`, request);
-    var json = await resp.json();
+        global.log('Subscribe...')
 
-    expect(json.error).to.equal('Access denied - not authorized');
-    expect(json.status).to.equal('err');
-})
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/subscribe/@${ACC}/send`, request);
+        var json = await resp.json();
 
-it('/take - login, but no subscribe', async function() {
-    global.log('Login...')
+        expect(json.error).to.equal(undefined);
+        expect(typeof json.subscriber_id).to.equal('number');
+        expect(json.status).to.equal('ok');
 
-    var login_challenge = await global.obtainLoginChallenge(ACC);
+        global.log('subscriber_id' + json.subscriber_id);
 
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
-    expect(json.error).to.equal(undefined);
-    expect(json.status).to.equal('ok');
+        global.log('Do operation...')
 
-    global.log('Test...')
+        await golos.broadcast.transferAsync(
+            ACC_ACTIVE,
+            ACC, ACC2, '0.001 GOLOS', '');
 
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/take/@${ACC}/1234`, request);
-    var json = await resp.json();
+        global.log('Take...')
 
-    expect(json.error).to.equal('Tarantool error');
-    expect(json.status).to.equal('err');
-})
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/take/@${ACC}/${json.subscriber_id}`, request);
+        var json = await resp.json();
 
-it('/take - good', async function() {
-    global.log('Login...')
-
-    var login_challenge = await global.obtainLoginChallenge(ACC);
-
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
-    expect(json.error).to.equal(undefined);
-    expect(json.status).to.equal('ok');
-
-    global.log('Subscribe...')
-
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/subscribe/@${ACC}`, request);
-    var json = await resp.json();
-
-    expect(json.error).to.equal(undefined);
-    expect(typeof json.subscriber_id).to.equal('number');
-    expect(json.status).to.equal('ok');
-
-    global.log('subscriber_id' + json.subscriber_id);
-
-    global.log('Take...')
-
-    var request = {...getRequestBase(),
-        method: 'get',
-    };
-    var resp = await fetch(global.HOST + `/take/@${ACC}/${json.subscriber_id}`, request);
-    var json = await resp.json();
-
-    expect(json.error).to.equal('Tarantool error');
-    expect(json.status).to.equal('err');
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+        console.log(json);
+    })
 })

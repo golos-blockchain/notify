@@ -1,14 +1,13 @@
 const koaRouter = require('koa-router');
 const Tarantool = require('../tarantool');
-const { returnError } = require('../utils');
+const { returnError, NTYPES } = require('../utils');
 
 module.exports = function useQueuesApi(app) {
     const router = new koaRouter();
     app.use(router.routes());
 
-    router.get('/subscribe/@:account/:subscriber_id?', async (ctx) => {
-        const { account } = ctx.params;
-        let { subscriber_id } = ctx.params;
+    router.get('/subscribe/@:account/:types', async (ctx) => {
+        const { account, types } = ctx.params;
 
         if (!ctx.session.a) {
             return returnError(ctx, 'Access denied - not authorized');
@@ -18,12 +17,29 @@ module.exports = function useQueuesApi(app) {
             return returnError(ctx, 'Access denied - wrong account');
         }
 
-        if (!subscriber_id) {
-            subscriber_id = Math.floor(Math.random() * 10000);
+        let typesStr = types.split(',');
+
+        if (!typesStr.length) {
+            return returnError(ctx, 'No correct notification types');
         }
 
+        let ntypes = {};
+        for (let type of typesStr) {
+            const i = NTYPES.indexOf(type);
+            if (i === -1) {
+                return returnError(ctx, `Wrong notification type - ${type}`);
+            }
+            ntypes[i] = true;
+            if (i === 0) { // 'total'
+                ntypes = { '0': true, };
+                break;
+            }
+        }
+
+        let subscriber_id = 0;
         try {
-            const res = await Tarantool.instance('tarantool').call('notification_subscribe', account, subscriber_id);
+            const res = await Tarantool.instance('tarantool').call('notification_subscribe', account, ntypes);
+            subscriber_id = res[0][0];
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${account} ${error.message}`);
             ctx.body = {
@@ -56,7 +72,7 @@ module.exports = function useQueuesApi(app) {
         try {
             const res = await Tarantool.instance('tarantool').call('notification_take', account, subscriber_id, remove_task_ids);
             ctx.body = {
-                tasks: [res[0]],
+                tasks: res[0][0].tasks,
                 status: 'ok',
             };
         } catch (error) {

@@ -14,6 +14,10 @@ global.log = (msg) => {
     cy.log(msg);
 };
 
+global.random = (length = 10) => {
+    return Cypress._.random(1000000, 9000000);
+};
+
 global.getRequestBase = function() {
     return {
         method: 'post',
@@ -86,4 +90,21 @@ global.signAndAuth = async (login_challenge, acc, postingKey) => {
 
     var json = await resp.json();
     return json;
+};
+
+global.subscribe = async function(acc, types) {
+    global.log(`Subscribe to ${types}...`)
+
+    var request = {...getRequestBase(),
+        method: 'get',
+    };
+    var resp = await fetch(global.HOST + `/subscribe/@${acc}/${types}`, request);
+    var json = await resp.json();
+
+    expect(json.error).to.equal(undefined);
+    expect(typeof json.subscriber_id).to.equal('number');
+    expect(json.status).to.equal('ok');
+
+    global.log('subscriber_id' + json.subscriber_id);
+    return json.subscriber_id;
 };
