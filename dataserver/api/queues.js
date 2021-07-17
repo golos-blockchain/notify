@@ -1,13 +1,13 @@
 const koaRouter = require('koa-router');
 const Tarantool = require('../tarantool');
-const { returnError, NTYPES } = require('../utils');
+const { returnError, SCOPES } = require('../utils');
 
 module.exports = function useQueuesApi(app) {
     const router = new koaRouter();
     app.use(router.routes());
 
-    router.get('/subscribe/@:account/:types', async (ctx) => {
-        const { account, types } = ctx.params;
+    router.get('/subscribe/@:account/:scopes', async (ctx) => {
+        const { account, scopes } = ctx.params;
 
         if (!ctx.session.a) {
             return returnError(ctx, 'Access denied - not authorized');
@@ -17,28 +17,28 @@ module.exports = function useQueuesApi(app) {
             return returnError(ctx, 'Access denied - wrong account');
         }
 
-        let typesStr = types.split(',');
+        let scopesStr = scopes.split(',');
 
-        if (!typesStr.length) {
-            return returnError(ctx, 'No correct notification types');
+        if (!scopesStr.length) {
+            return returnError(ctx, 'No correct notification scopes');
         }
 
-        let ntypes = {};
-        for (let type of typesStr) {
-            const i = NTYPES.indexOf(type);
+        let scopeIds = {};
+        for (let scope of scopesStr) {
+            const i = SCOPES.indexOf(scope);
             if (i === -1) {
-                return returnError(ctx, `Wrong notification type - ${type}`);
+                return returnError(ctx, `Wrong notification scope - ${scope}`);
             }
-            ntypes[i] = true;
+            scopeIds[i] = true;
             if (i === 0) { // 'total'
-                ntypes = { '0': true, };
+                scopeIds = { '0': true, };
                 break;
             }
         }
 
         let subscriber_id = 0;
         try {
-            const res = await Tarantool.instance('tarantool').call('notification_subscribe', account, ntypes);
+            const res = await Tarantool.instance('tarantool').call('notification_subscribe', account, scopeIds);
             subscriber_id = res[0][0];
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${account} ${error.message}`);
@@ -70,7 +70,10 @@ module.exports = function useQueuesApi(app) {
         const remove_task_ids = task_ids ? task_ids.split('-').map(x => +x) : [];
 
         try {
-            const res = await Tarantool.instance('tarantool').call('notification_take', account, subscriber_id, remove_task_ids);
+            let res = await Tarantool.instance('tarantool').call('notification_take', account, subscriber_id, remove_task_ids);
+            for (let task of res[0][0].tasks) {
+                task.scope = SCOPES[task.scope];
+            }
             ctx.body = {
                 tasks: res[0][0].tasks,
                 status: 'ok',

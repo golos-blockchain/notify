@@ -14,7 +14,7 @@ import sys
 import tarantool
 import time
 
-NTYPES = {
+SCOPES = {
     'total': 0,
     'feed': 1, # not used
     'reward': 2, # not used
@@ -70,7 +70,7 @@ def processMentions(text, op):
         tnt_server.call(
             'notification_add',
             mention[1:],
-            NTYPES['mention'],
+            SCOPES['mention'],
             False,
             op,
             op['timestamp_prev']
@@ -98,7 +98,7 @@ def processComment(op):
             tnt_server.call(
                 'notification_add',
                 op['parent_author'],
-                NTYPES['comment_reply'],
+                SCOPES['comment_reply'],
                 True,
                 op,
                 op['timestamp_prev']
@@ -112,7 +112,7 @@ def processTransfer(op):
     tnt_server.call(
         'notification_add',
         op['from'],
-        NTYPES['send'],
+        SCOPES['send'],
         True,
         op,
         op['timestamp_prev']
@@ -120,7 +120,7 @@ def processTransfer(op):
     tnt_server.call(
         'notification_add',
         op['to'],
-        NTYPES['receive'],
+        SCOPES['receive'],
         True,
         op,
         op['timestamp_prev']
@@ -133,7 +133,7 @@ def processDonate(op):
     tnt_server.call(
         'notification_add',
         op['to'],
-        NTYPES['donate'],
+        SCOPES['donate'],
         True,
         op,
         op['timestamp_prev']
@@ -151,7 +151,7 @@ def processMessage(op):
     tnt_server.call(
         'notification_add',
         data['from'],
-        NTYPES['message'],
+        SCOPES['message'],
         False,
         op_json,
         op['timestamp_prev']
@@ -159,7 +159,7 @@ def processMessage(op):
     tnt_server.call(
         'notification_add',
         data['to'],
-        NTYPES['message'],
+        SCOPES['message'],
         op_json[0] == 'private_message' and True or False,
         op_json,
         op['timestamp_prev']

@@ -60,6 +60,7 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('send');
         expect(json.tasks[0].data[0]).to.equal('transfer');
         expect(json.tasks[0].data[1].from).to.equal(ACC);
         expect(json.tasks[0].data[1].to).to.equal(ACC2);
@@ -78,6 +79,7 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('receive');
         expect(json.tasks[0].data[0]).to.equal('transfer');
         expect(json.tasks[0].data[1].from).to.equal(ACC);
         expect(json.tasks[0].data[1].to).to.equal(ACC2);
@@ -122,6 +124,7 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('message');
         expect(json.tasks[0].data[0]).to.equal('private_message');
         expect(json.tasks[0].data[1].from).to.equal(ACC);
         expect(json.tasks[0].data[1].to).to.equal(ACC2);
@@ -142,6 +145,7 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('message');
         expect(json.tasks[0].data[0]).to.equal('private_message');
         expect(json.tasks[0].data[1].from).to.equal(ACC);
         expect(json.tasks[0].data[1].to).to.equal(ACC2);
@@ -191,6 +195,7 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('donate');
         expect(json.tasks[0].data[0]).to.equal('donate');
         expect(json.tasks[0].data[1].from).to.equal(ACC);
         expect(json.tasks[0].data[1].to).to.equal(ACC2);
@@ -267,6 +272,7 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('comment_reply');
 
         global.log('Take ACC2...')
 
@@ -280,6 +286,7 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('comment_reply');
     })
 
     it('mention', async function() {
@@ -321,6 +328,7 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('mention');
 
         global.log('Take ACC2...')
 
@@ -334,5 +342,6 @@ describe('queues - data tests', function () {
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('comment_reply');
     })
 })

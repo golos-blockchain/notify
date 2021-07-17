@@ -4,7 +4,7 @@ allowedClients = allowedClients.split(' ').filter(el => {
     return el.length !== 0;
 });
 
-const NTYPES = [
+const SCOPES = [
 /*  0 */    'total',
 /*  1 */    'feed', // not used
 /*  2 */    'reward', // not used
@@ -59,7 +59,7 @@ const checkOrigin = (ctx) => {
 };
 
 module.exports = {
-    NTYPES,
+    SCOPES,
     returnError,
     checkOrigin,
 };

@@ -28,15 +28,7 @@ it('/counters', async function() {
     expect(json.error).to.equal(undefined);
     expect(json.status).to.equal('ok');
 
-    if (json.counters.length !== 16) {
-        expect(json.counters.length).to.equal(0);
-    } else {
-        expect(json.counters.length).to.equal(16);
-    }
-
-    let all = json.counters[0] || 0;
-    let send = json.counters[3] || 0;
-    let receive = json.counters[11] || 0;
+    let { total, send, receive } = json.counters;
 
     global.log('Doing operation...')
 
@@ -50,19 +42,18 @@ it('/counters', async function() {
 
     var resp = await fetch(global.HOST + `/counters/@${ACC}`, request);
     var json = await resp.json();
-    expect(json.counters[0]).to.equal(all + 1);
-    expect(json.counters[3]).to.equal(send + 1);
-    expect(json.counters[11]).to.equal(receive);
+    expect(json.counters.total).to.equal(total + 1);
+    expect(json.counters.send).to.equal(send + 1);
+    expect(json.counters.receive).to.equal(receive);
 
     global.log('Clearing counters and checking them...')
 
     var request = {...getRequestBase(),
         method: 'put',
     };
-    var resp = await fetch(global.HOST + `/counters/@${ACC}/3`, request);
+    var resp = await fetch(global.HOST + `/counters/@${ACC}/send`, request);
     var json = await resp.json();
     expect(json.error).to.equal(undefined);
     expect(json.status).to.equal('ok');
-    expect(json.counters.length).to.equal(16);
-    expect(json.counters[3]).to.equal(0);
+    expect(json.counters.total).to.equal(0);
 });

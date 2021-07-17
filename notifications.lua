@@ -1,7 +1,7 @@
 queue = require 'queue'
 require 'table_utils'
 
--- NTYPES = {
+-- SCOPES = {
 --     'total': 0,
 --     'feed': 1, # not used
 --     'reward': 2, # not used
@@ -20,9 +20,9 @@ require 'table_utils'
 --     'reserved4': 15
 -- }
 
-function notification_subscribe(account, ntypes)
+function notification_subscribe(account, scopes)
     account = account:gsub('-', '_')
-    local q = box.space.notification_queues:auto_increment{account, ntypes}
+    local q = box.space.notification_queues:auto_increment{account, scopes}
 
     local queue_id = account .. '_' .. q[1]
     queue.create_tube(queue_id, 'fifottl', {temporary = false, if_not_exists = true, ttr = 2})
@@ -58,19 +58,19 @@ function notification_take(account, subscriber_id, task_ids)
     return { tasks = tasks }
 end
 
-function notification_add(account, ntype, add_counter, op_data, timestamp)
-  -- print('notification_push -->', account, ntype, add_counter, op_data, timestamp)
-  if ntype ~= nil and add_counter then
+function notification_add(account, scope, add_counter, op_data, timestamp)
+  -- print('notification_push -->', account, scope, add_counter, op_data, timestamp)
+  if scope ~= nil and add_counter then
     local space = box.space.notifications
     local res = space:select{account}
     if #res > 0 then
       -- print_r(res)
       local tuple = res[1]
       -- print('existing:', tuple, #tuple)
-      space:update(account, {{'+', 2, 1}, {'+', ntype + 2, 1}})
+      space:update(account, {{'+', 2, 1}, {'+', scope + 2, 1}})
     else
       local tuple = {account, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-      tuple[ntype + 2] = 1;
+      tuple[scope + 2] = 1;
       space:insert(tuple)
     end
   end
@@ -79,28 +79,28 @@ function notification_add(account, ntype, add_counter, op_data, timestamp)
         account = account:gsub('-', '_')
         local qs = box.space.notification_queues.index.by_acc_subscriber:select{account}
         for i,val in ipairs(qs) do
-            local q_ntype = val[3]
-            if q_ntype['0'] or q_ntype[tostring(ntype)] then
+            local q_scope = val[3]
+            if q_scope['0'] or q_scope[tostring(scope)] then
                 local queue_id = val[2] .. '_' .. val[1]
                 -- if it is not custom_json
                 if not op_data[1] then
                   op_data = { op_data['type'], op_data }
                 end
-                queue.tube[queue_id]:put({ scope = ntype, data = op_data, timestamp = timestamp})
+                queue.tube[queue_id]:put({ scope = scope, data = op_data, timestamp = timestamp})
             end
         end
     end
 end
 
-function notification_read(account, ntype)
-  -- print('notification_read -->', account, ntype)
+function notification_read(account, scope)
+  -- print('notification_read -->', account, scope)
   local space = box.space.notifications
   local res = space:select{account}
   if #res == 0 then return nil end
   local tuple = res[1]
-  local count = tuple[ntype + 2]
+  local count = tuple[scope + 2]
   if count == nil or count <= 0 then return tuple end
-  local res = space:update(account, {{'-', 2, count}, {'=', ntype + 2, 0}})
+  local res = space:update(account, {{'-', 2, count}, {'=', scope + 2, 0}})
   return res
 end
 
