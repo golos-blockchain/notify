@@ -2,7 +2,6 @@
 from contextlib import suppress
 
 from golos.steem import Steem
-from golos.account import Account
 from golos.blockchain import Blockchain
 from golos.post import Post
 from golosbase.exceptions import PostDoesNotExist
@@ -15,34 +14,32 @@ import sys
 import tarantool
 import time
 
-MIN_NOTIFY_REPUTATION = 0
-
 NTYPES = {
     'total': 0,
-    'feed': 1,
-    'reward': 2,
+    'feed': 1, # not used
+    'reward': 2, # not used
     'send': 3,
     'mention': 4,
-    'follow': 5,
-    'vote': 6,
+    'follow': 5, # not used
+    'vote': 6, # not used
     'comment_reply': 7,
-    'post_reply': 8,
-    'account_update': 9,
+    'post_reply': 8, # not used, uses comment_reply
+    'account_update': 9, # not used
     'message': 10,
     'receive': 11,
-    'donate': 12
+    'donate': 12,
+    'reserved2': 13,
+    'reserved3': 14,
+    'reserved4': 15
 }
 
-# gloabal variables
+# global variables
 steem = None
 tnt_server = None
 steem_space = None
-followers_space = None
 chain = None
-img_proxy_prefix = 'https://steemitimages.com/'
 processed_posts = {}
 
-STEEMIT_WEBCLIENT_ADDRESS = os.environ.get('STEEMIT_WEBCLIENT_ADDRESS', 'https://golos.id')
 TARANTOOL_HOST = os.environ.get('TARANTOOL_HOST', '127.0.0.1')
 NODE_URL = os.environ.get('NODE_URL', 'https://api.golos.id')
 
@@ -59,37 +56,7 @@ def getPostKey(post):
         return None
 
 
-def getFollowersWithDirection(account, direction='follower', last_user=''):
-    if direction == 'follower':
-        followers = account.get_followers()
-    elif direction == 'following':
-        followers = account.get_following()
-    return followers
-
-
-def getFollowers(account):
-    print('getFollowers', account.name)
-    res = followers_space.select(account.name)
-    if len(res) == 0:
-        followers = getFollowersWithDirection(account)
-        followers_space.insert((account.name, followers))
-    else:
-        followers = res[0][1]
-    return followers
-
-
-def addFollower(account_name, follower):
-    print('addFollower', account_name, follower)
-    res = tnt_server.call('add_follower', account_name, follower)
-    if not res[0]:
-        with suppress(Exception):
-            followers = getFollowersWithDirection(Account(account_name))
-            followers.append(follower)
-            followers_space.insert((account_name, followers))
-            tnt_server.call('add_follower', account_name, follower)
-
-
-def processMentions(author_account, text, op):
+def processMentions(text, op):
     mentions = re.findall('\@[\w\d.-]+', text)
     if (len(mentions) == 0):
         return
@@ -109,23 +76,6 @@ def processMentions(author_account, text, op):
             op['timestamp_prev']
         )
 
-
-def processFollow(op):
-    op_json = json.loads(op['json'])
-    if not isinstance(op_json, list) or op_json[0] != 'follow':
-        return
-    data = op_json[1]
-    addFollower(data['following'], data['follower'])
-    tnt_server.call(
-        'notification_add',
-        data['following'],
-        NTYPES['follow'],
-        True,
-        op_json,
-        op['timestamp_prev']
-    )
-
-
 def processComment(op):
     comment_body = op['body']
     if not comment_body or comment_body.startswith('@@ '):
@@ -141,8 +91,7 @@ def processComment(op):
     if not pkey or pkey in processed_posts:
         return
     processed_posts[pkey] = True
-    author_account = Account(op['author'], steemd_instance=steem)
-    processMentions(author_account, comment_body, op)
+    processMentions(comment_body, op)
     if op['parent_author']:
         if op['parent_author'] != op['author']:
             # no need to notify self of own comments
@@ -150,16 +99,6 @@ def processComment(op):
                 'notification_add',
                 op['parent_author'],
                 NTYPES['comment_reply'],
-                True,
-                op,
-                op['timestamp_prev']
-            )
-    else:
-        followers = getFollowers(author_account)
-        for follower in followers:
-            tnt_server.call('notification_add',
-                follower,
-                NTYPES['feed'],
                 True,
                 op,
                 op['timestamp_prev']
@@ -226,28 +165,9 @@ def processMessage(op):
         op['timestamp_prev']
     )
 
-
-#def processAccountUpdate(op):
-#    print(json.dumps(op, indent=4))
-#    if not ('active' in op or 'owner' in op or 'posting' in op):
-#        return
-#
-#    tnt_server.call(
-#        'notification_add',
-#        op['account'],
-#        NTYPES['account_update'],
-#        True,
-#        op,
-#        op['timestamp_prev']
-#    )
-
-
 def processOp(op_data):
     op_type = op_data['type']
     op = op_data
-
-    if op_type == 'custom_json' and op['id'] == 'follow':
-        processFollow(op)
 
     if op_type == 'custom_json' and op['id'] == 'private_message':
         processMessage(op)
@@ -260,9 +180,6 @@ def processOp(op_data):
 
     if op_type == 'donate':
         processDonate(op)
-
-#    if op_type == 'account_update':
-#        processAccountUpdate(op)
 
 
 def run():
@@ -289,7 +206,6 @@ def main():
     global steem
     global tnt_server
     global steem_space
-    global followers_space
     global chain
 
     print('starting datafeed.py..')
@@ -305,7 +221,6 @@ def main():
             sys.stdout.flush()
             tnt_server = tarantool.connect(TARANTOOL_HOST, 3301)
             steem_space = tnt_server.space('steem')
-            followers_space = tnt_server.space('followers')
         except Exception as e:
             print('Cannot connect to tarantool server', file=sys.stderr)
             print(str(e), file=sys.stderr)

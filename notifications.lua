@@ -2,22 +2,22 @@ queue = require 'queue'
 require 'table_utils'
 
 -- NTYPES = {
---   'total': 0,
---   'feed': 1,
---   'reward': 2,
---   'send': 3,
---   'mention': 4,
---   'follow': 5,
---   'vote': 6,
---   'comment_reply': 7,
---   'post_reply': 8,
---   'account_update': 9,
---   'message': 10,
---   'receive': 11,
---   'donate': 12,
---   'reserved2': 13,
---   'reserved3': 14,
---   'reserved4': 15,
+--     'total': 0,
+--     'feed': 1, # not used
+--     'reward': 2, # not used
+--     'send': 3,
+--     'mention': 4,
+--     'follow': 5, # not used
+--     'vote': 6, # not used
+--     'comment_reply': 7,
+--     'post_reply': 8, # not used, uses comment_reply
+--     'account_update': 9, # not used
+--     'message': 10,
+--     'receive': 11,
+--     'donate': 12,
+--     'reserved2': 13,
+--     'reserved3': 14,
+--     'reserved4': 15
 -- }
 
 function notification_subscribe(account, ntypes)
