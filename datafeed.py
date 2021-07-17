@@ -93,29 +93,18 @@ def processMentions(author_account, text, op):
     mentions = re.findall('\@[\w\d.-]+', text)
     if (len(mentions) == 0):
         return
-    if op['parent_author']:
-        what = 'comment'
-        url = '%s/@%s/%s#@%s/%s' % (
-            STEEMIT_WEBCLIENT_ADDRESS,
-            op['parent_author'],
-            op['parent_permlink'],
-            op['author'],
-            op['permlink']
-        )
-    else:
-        what = 'post'
-        url = '%s/@%s/%s' % (STEEMIT_WEBCLIENT_ADDRESS, op['author'], op['permlink'])
 
     for mention in set(mentions):
-        if (mention == op['author']):
+        if mention[1:] == op['author'] or mention[1:] == op['parent_author']:
             # don't notify on self-mentions
+            # and don't notify mentions of parent_author (because it duplicates comment_reply)
             continue
-        print('--- mention: ', what, url, mention, mention[1:])
+        print('--- mention: ', op['author'], op['permlink'], mention, mention[1:])
         tnt_server.call(
             'notification_add',
             mention[1:],
             NTYPES['mention'],
-            True,
+            False,
             op,
             op['timestamp_prev']
         )

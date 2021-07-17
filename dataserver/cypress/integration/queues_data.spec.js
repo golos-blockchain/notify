@@ -229,7 +229,7 @@ describe('queues - data tests', function () {
         global.session = global.sessionAcc2;
         const subACC2 = await global.subscribe(ACC2, 'comment_reply');
 
-        global.log('Transfer vesting to ACC...')
+        global.log('Transfer vesting to ACC2...')
 
         await golos.broadcast.transferToVestingAsync(
             ACC_ACTIVE,
@@ -254,6 +254,60 @@ describe('queues - data tests', function () {
         await golos.broadcast.commentAsync(
             ACC_POSTING,
             ACC2, `re-${permlink}`, ACC, `re-${permlink}2`, 'RE', 'test comment reply', '{"test":1}');
+
+        global.log('Take ACC...')
+
+        global.session = global.sessionAcc;
+
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/take/@${ACC}/${subACC}`, request);
+        var json = await resp.json();
+
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+
+        global.log('Take ACC2...')
+
+        global.session = global.sessionAcc2;
+
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/take/@${ACC2}/${subACC2}`, request);
+        var json = await resp.json();
+
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+    })
+
+    it('mention', async function() {
+        global.session = global.sessionAcc;
+        const subACC = await global.subscribe(ACC, 'mention,comment_reply');
+
+        global.session = global.sessionAcc2;
+        const subACC2 = await global.subscribe(ACC2, 'mention,comment_reply');
+
+        global.log('Transfer vesting to ACC2...')
+
+        await golos.broadcast.transferToVestingAsync(
+            ACC_ACTIVE,
+            ACC, ACC2, '100.000 GOLOS');
+
+        const permlink = `test-test-${global.random()}`;
+
+        global.log('Post by ACC2...')
+
+        await golos.broadcast.commentAsync(
+            ACC_POSTING,
+            '', 'test', ACC2, permlink, 'Post', `@${ACC}, hi!`, '{"test":1}');
+
+        global.log('Comment by ACC...')
+
+        await golos.broadcast.commentAsync(
+            ACC_POSTING,
+            ACC2, permlink, ACC, `re-${permlink}`, 'RE', `@${ACC2} hi! How are you?`, '{"test":1}');
 
         global.log('Take ACC...')
 

@@ -60,7 +60,7 @@ end
 
 function notification_add(account, ntype, add_counter, op_data, timestamp)
   -- print('notification_push -->', account, ntype, add_counter, op_data, timestamp)
-  if ntype ~= 4 and ntype ~= nil and add_counter then
+  if ntype ~= nil and add_counter then
     local space = box.space.notifications
     local res = space:select{account}
     if #res > 0 then
