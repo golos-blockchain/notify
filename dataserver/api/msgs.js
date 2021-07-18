@@ -86,7 +86,7 @@ module.exports = function useMsgsApi(app) {
 
         const now = new Date().toISOString().split('.')[0];
 
-        try {
+        /*try {
             const res = await Tarantool.instance('tarantool').call(
                 'notification_add',
                 from,
@@ -126,6 +126,6 @@ module.exports = function useMsgsApi(app) {
                 error: 'Tarantool error when notifying to',
             };
             return;
-        }
+        }*/
     });
 }
