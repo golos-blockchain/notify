@@ -82,6 +82,7 @@ def processComment(op):
         return
     try:
         post = Post(op, steemd_instance=steem)
+        op['_depth'] = post['depth']
     except PostDoesNotExist as err:
         print('Err update post', err)
         return
