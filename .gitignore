@@ -1,3 +1,5 @@
 *.xlog
 *.snap
-.rocks
+dataserver/node_modules
+dataserver/cypress/screenshots
+dataserver/cypress/videos

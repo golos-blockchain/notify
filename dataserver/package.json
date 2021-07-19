@@ -1,0 +1,30 @@
+{
+  "name": "dataserver",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build-prod": "./build-version.sh",
+    "start": "./run-dev.sh",
+    "prod": "node index.js",
+    "test": "cypress open"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fetch-cookie": "^1.0.0",
+    "golos-classic-js": "^0.8.2",
+    "koa": "^2.13.0",
+    "koa-body": "^4.2.0",
+    "koa-cors": "0.0.16",
+    "koa-livereload": "^0.2.0",
+    "koa-router": "^10.0.0",
+    "koa-session-auth": "^1.0.3",
+    "secure-random": "^1.1.2",
+    "tarantool-driver": "^2.0.1"
+  },
+  "devDependencies": {
+    "cypress": "^7.7.0",
+    "nodemon": "^2.0.6"
+  }
+}

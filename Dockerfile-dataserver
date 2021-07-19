@@ -1,0 +1,17 @@
+FROM node:16.1
+
+# For version in healthcheck
+RUN mkdir -p /.git
+COPY .git/ /.git/
+
+RUN mkdir -p /server
+WORKDIR /server
+
+# Bundle app source
+COPY dataserver/ /server/
+WORKDIR /server
+RUN npm install
+RUN npm run build-prod
+
+EXPOSE 8805
+CMD [ "npm", "run", "prod" ]
