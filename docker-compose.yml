@@ -2,38 +2,40 @@ version: "3"
 services:
 
   datastore:
-    image: golosblockchain/web-ui:datastore
+    image: golosblockchain/notify:datastore
+    restart: always
     build:
       context: .
       dockerfile: Dockerfile-datastore
     volumes:
       - ./tarantool:/var/lib/tarantool
-    ports:
-      - "3301:3301"
 
   datafeed:
-    image: golosblockchain/web-ui:datafeed
+    image: golosblockchain/notify:datafeed
+    restart: always
     build:
       context: .
       dockerfile: Dockerfile-datafeed
-    restart: unless-stopped
     depends_on:
       - datastore
     environment:
-      NODE_URL: https://api.golos.id
+      NODE_URL: https://api-full.golos.id
       TARANTOOL_HOST: datastore
 
   dataserver:
-    image: golosblockchain/web-ui:dataserver
+    image: golosblockchain/notify:dataserver
+    restart: always
     build:
       context: .
       dockerfile: Dockerfile-dataserver
-    restart: unless-stopped
     depends_on:
       - datastore
     environment:
-      NODE_URL: https://api.golos.id
+      NODE_URL: https://api-full.golos.id
       TARANTOOL_HOST: datastore
-      SESSION_SECRET: should-be-really-generated-secret
+      SESSION_SECRET: exiKdyF+IwRIXJDmtGIl4vWUz4i3eVSISpfZoeYc0s4=
+      ALLOWED_CLIENTS: "golos.id golostalk.com"
     ports:
       - "8805:8805"
+
+  # SESSION_SECRET can be generated via Node - crypto.randomBytes(32).toString('base64')

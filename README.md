@@ -1,7 +1,5 @@
 # Golos Notify Service
 
-https://notify.golos.today/
-
 Сервис уведомлений для проектов на блокчейне Golos Blockchain. Позволяет:
 - показывать всплывающие уведомления о различных действиях пользователей (например, "alice отблагодарила вас 1.000 GOLOS")
 - мгновенно отображать личные сообщения в мессенджерах, чатах и т.д. на основе [Golos Messenger](https://github.com/golos-blockchain/golos-js/tree/master/doc#private-messages)
