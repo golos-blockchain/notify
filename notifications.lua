@@ -76,17 +76,9 @@ function notification_add(account, scope, add_counter, op_data, timestamp)
   end
 
     if op_data ~= nil then
-        account = account:gsub('-', '_')
-        local qs = box.space.notification_queues.index.by_acc_subscriber:select{account}
-        for i,val in ipairs(qs) do
-            local q_scope = val[3]
-            if q_scope['0'] or q_scope[tostring(scope)] then
-                local queue_id = val[2] .. '_' .. val[1]
-                -- if it is not custom_json
-                if not op_data[1] then
-                  op_data = { op_data['type'], op_data }
-                end
-                queue.tube[queue_id]:put({ scope = scope, data = op_data, timestamp = timestamp})
+        for id,val in pairs(queue.tube) do
+            if id:sub(1, #account) == account:gsub('-', '_') then
+                queue.tube[id]:put({ scope = scope, data = op_data, timestamp = timestamp})
             end
         end
     end
