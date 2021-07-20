@@ -20,16 +20,14 @@ require 'table_utils'
 --     'reserved4': 15
 -- }
 
-math.randomseed(os.time())
-
 function notification_subscribe(account, scopes)
     account = account:gsub('-', '_')
-    local q = math.random(10000, 999999)
+    local q = box.space.notification_queues:auto_increment{account, scopes}
 
-    local queue_id = account .. '_' .. q
+    local queue_id = account .. '_' .. q[1]
     queue.create_tube(queue_id, 'fifottl', {temporary = false, if_not_exists = true, ttr = 2})
 
-    return q
+    return q[1]
 end
 
 function notification_take(account, subscriber_id, task_ids)
