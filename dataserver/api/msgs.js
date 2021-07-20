@@ -86,7 +86,7 @@ module.exports = function useMsgsApi(app) {
 
         const now = new Date().toISOString().split('.')[0];
 
-        /*try {
+        try {
             const res = await Tarantool.instance('tarantool').call(
                 'notification_add',
                 from,
@@ -95,9 +95,6 @@ module.exports = function useMsgsApi(app) {
                 ['private_message', {...params, _offchain: true}],
                 now,
             );
-            ctx.body = {
-                status: 'ok',
-            };
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${from} ${error.message}`);
             ctx.body = {
@@ -126,6 +123,6 @@ module.exports = function useMsgsApi(app) {
                 error: 'Tarantool error when notifying to',
             };
             return;
-        }*/
+        }
     });
 }
