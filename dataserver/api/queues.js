@@ -10,10 +10,12 @@ module.exports = function useQueuesApi(app) {
         const { account, scopes } = ctx.params;
 
         if (!ctx.session.a) {
+            ctx.status = 403;
             return returnError(ctx, 'Access denied - not authorized');
         }
 
         if (account !== ctx.session.a) {
+            ctx.status = 403;
             return returnError(ctx, 'Access denied - wrong account');
         }
 
@@ -60,10 +62,12 @@ module.exports = function useQueuesApi(app) {
         const { account, subscriber_id, task_ids } = ctx.params;
 
         if (!ctx.session.a) {
+            ctx.status = 403;
             return returnError(ctx, 'Access denied - not authorized');
         }
 
         if (account !== ctx.session.a) {
+            ctx.status = 403;
             return returnError(ctx, 'Access denied - wrong account');
         }
 

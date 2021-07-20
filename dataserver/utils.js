@@ -21,6 +21,7 @@ const SCOPES = [
 ];
 
 const returnError = (ctx, error) => {
+    ctx.status = 400;
     ctx.body = {status: 'err', error: error};
 };
 
