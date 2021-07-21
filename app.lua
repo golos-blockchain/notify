@@ -45,6 +45,9 @@ box.once('bootstrap', function()
     notification_queues:create_index('by_acc_subscriber', {
         type = 'tree', parts = {2, 'STR', 1, 'unsigned'}
     })
+    notification_queues:create_index('by_update', {
+        type = 'tree', parts = {4, 'unsigned'}, unique = false
+    })
 
     locks = box.schema.create_space('locks')
     locks:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
