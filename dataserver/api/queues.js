@@ -56,7 +56,16 @@ module.exports = function useQueuesApi(app) {
 
         let subscriber_id = 0;
         try {
+            const start = new Date();
+
             const res = await Tarantool.instance('tarantool').call('notification_subscribe', account, scopeIds);
+
+            const elapse = new Date() - start;
+            if (elapse > 5000)
+                console.warn(`PULSE-SLOW: notifications @${account} ${elapse}`);
+            else
+                console.log(`PULSE: notifications @${account} ${elapse}`);
+
             subscriber_id = res[0][0];
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${account} ${error.message}`);
