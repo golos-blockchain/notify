@@ -198,7 +198,7 @@ def run():
         if last_block % 10 == 0:
             sys.stdout.flush()
 
-        if last_block % 3 == 0:
+        if last_block % 10 == 0:
             tnt_server.call('notification_cleanup')
 
         processOp(op)
