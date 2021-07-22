@@ -58,7 +58,7 @@ const limiter = RateLimit.middleware({
         ctx.set('Retry-After', 20); // seconds
     },
 });
-app.use(limiter);
+//app.use(limiter);
 app.use(errorHandler());
 
 app.use(koaBody());
