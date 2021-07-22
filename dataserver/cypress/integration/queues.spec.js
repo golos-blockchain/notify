@@ -118,7 +118,7 @@ describe('queues - lifecycle tests', function () {
         expect(json.status).to.equal('err');
     })
 
-    it('/take - good', async function() {
+    it('/take - good + /unsubscribe', async function() {
         global.log('Login...')
 
         var login_challenge = await global.obtainLoginChallenge(ACC);
@@ -139,7 +139,9 @@ describe('queues - lifecycle tests', function () {
         expect(typeof json.subscriber_id).to.equal('number');
         expect(json.status).to.equal('ok');
 
-        global.log('subscriber_id' + json.subscriber_id);
+        const { subscriber_id } = json;
+
+        global.log('subscriber_id' + subscriber_id);
 
         global.log('Do operation...')
 
@@ -152,11 +154,46 @@ describe('queues - lifecycle tests', function () {
         var request = {...getRequestBase(),
             method: 'get',
         };
-        var resp = await fetch(global.HOST + `/take/@${ACC}/${json.subscriber_id}`, request);
+        var resp = await fetch(global.HOST + `/take/@${ACC}/${subscriber_id}`, request);
         var json = await resp.json();
 
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
         console.log(json);
+
+        global.log('Unsubscribe...')
+
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/unsubscribe/@${ACC}/${subscriber_id}`, request);
+        var json = await resp.json();
+
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+        expect(json.was).to.equal(true);
+
+        global.log('Take after unsubscribe...')
+
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/take/@${ACC}/${subscriber_id}`, request);
+        var json = await resp.json();
+
+        expect(json.error).to.equal('Tarantool error');
+        expect(json.status).to.equal('err');
+
+        global.log('Unsubscribe again...')
+
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/unsubscribe/@${ACC}/${subscriber_id}`, request);
+        var json = await resp.json();
+
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+        expect(json.was).to.equal(false);
     })
 })

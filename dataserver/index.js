@@ -4,9 +4,11 @@ const session = require('koa-session-auth');
 const koaRouter = require('koa-router');
 const cors = require('koa-cors');
 const livereload = require('koa-livereload');
+const RateLimit = require('koa2-ratelimit').RateLimit;
 const golos = require('golos-classic-js');
 
 const version = require('./version');
+const errorHandler = require('./error_handler');
 const useAuthApi = require('./api/auth');
 const useCountersApi = require('./api/counters');
 const useQueuesApi = require('./api/queues');
@@ -32,10 +34,9 @@ router.get('/', async (ctx) => {
     };
 });
 
-
 app.use(livereload());
 app.use(cors({ credentials: true,
-    expose: ['X-Session'],
+    expose: ['X-Session', 'Retry-After'],
 }));
 app.keys = [SESSION_SECRET];
 app.use(session({
@@ -43,6 +44,22 @@ app.use(session({
     useCookie: false,
     key: 'X-Session',
 }, app));
+
+const limiter = RateLimit.middleware({
+    interval: { min: 1 }, // minutes
+    max: 2*120, // max requests per interval for each IP (*2 because including OPTIONS before each request)
+    headers: true,
+    handler: (ctx) => {
+        ctx.status = 429;
+        ctx.body = {
+            status: 'err',
+            error: 'Too many requests',
+        };
+        ctx.set('Retry-After', 20); // seconds
+    },
+});
+app.use(limiter);
+app.use(errorHandler());
 
 app.use(koaBody());
 app.use(router.routes());

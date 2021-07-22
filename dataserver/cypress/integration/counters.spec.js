@@ -55,5 +55,5 @@ it('/counters', async function() {
     var json = await resp.json();
     expect(json.error).to.equal(undefined);
     expect(json.status).to.equal('ok');
-    expect(json.counters.total).to.equal(0);
+    expect(json.counters.send).to.equal(0);
 });

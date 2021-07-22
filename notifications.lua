@@ -1,5 +1,6 @@
 queue = require 'queue'
 require 'table_utils'
+fiber = require 'fiber'
 
 -- SCOPES = {
 --     'total': 0,
@@ -22,7 +23,7 @@ require 'table_utils'
 
 function notification_subscribe(account, scopes)
     account = account:gsub('-', '_')
-    local q = box.space.notification_queues:auto_increment{account, scopes}
+    local q = box.space.notification_queues:auto_increment{account, scopes, fiber.clock64()}
 
     local queue_id = account .. '_' .. q[1]
     queue.create_tube(queue_id, 'fifottl', {temporary = false, if_not_exists = true, ttr = 2})
@@ -30,17 +31,40 @@ function notification_subscribe(account, scopes)
     return q[1]
 end
 
+function notification_unsubscribe(account, subscriber_id)
+    account = account:gsub('-', '_')
+    local queue_id = account .. '_' .. subscriber_id
+    local the_tube = queue.tube[queue_id]
+    if the_tube == nil then
+        return { was = false } -- may be account tries to remove another acc's queue
+    end
+
+    local q = box.space.notification_queues:delete{subscriber_id}
+    if q == nil then
+        return { was = false }
+    end
+
+    the_tube:drop()
+
+    return { was = true }
+end
+
 function notification_take(account, subscriber_id, task_ids)
     account = account:gsub('-', '_')
     local queue_id = account .. '_' .. subscriber_id
 
     local the_tube = queue.tube[queue_id]
+    if the_tube == nil then
+        return { tasks = nil }
+    end
+
+    box.space.notification_queues:update(subscriber_id, {{'=', 4, fiber.clock64()}})
 
     for idx,task_id in ipairs(task_ids) do
         pcall(the_tube.delete, the_tube, task_id)
     end
 
-    local task = the_tube:take(60)
+    local task = the_tube:take(20)
     if task ~= nil then
       task = the_tube:release(task[1])
     end
@@ -86,10 +110,39 @@ function notification_add(account, scope, add_counter, op_data, timestamp)
                 if not op_data[1] then
                   op_data = { op_data['type'], op_data }
                 end
-                queue.tube[queue_id]:put({ scope = scope, data = op_data, timestamp = timestamp})
+                local the_tube = queue.tube[queue_id]
+                if the_tube ~= nil then
+                    queue.tube[queue_id]:put({ scope = scope, data = op_data, timestamp = timestamp})
+                end
             end
         end
     end
+end
+
+function notification_cleanup()
+    print('notification_cleanup')
+    local now = fiber.clock64()
+    local qs = box.space.notification_queues.index.by_update:select({1}, {iterator = 'GT', limit = 100})
+    for i,val in ipairs(qs) do
+        if (now - val[4]) > 60*1000000 then -- 1 minute
+            print('cleaning: ' .. val[2] .. '_' .. val[1])
+            local q = box.space.notification_queues:delete{val[1]}
+            if q ~= nil then
+                local queue_id = val[2] .. '_' .. val[1]
+                local the_tube = queue.tube[queue_id]
+                if the_tube ~= nil then
+                    the_tube:drop()
+                end
+            end
+        else
+            break
+        end
+    end
+    print('notification_cleanup_end')
+end
+
+function notification_stats()
+    return box.space.notification_queues:count()
 end
 
 function notification_read(account, scope)
