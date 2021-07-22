@@ -114,7 +114,7 @@ describe('queues - lifecycle tests', function () {
         var resp = await fetch(global.HOST + `/take/@${ACC}/1234`, request);
         var json = await resp.json();
 
-        expect(json.error).to.equal('Tarantool error');
+        expect(json.error).to.equal('No such queue');
         expect(json.status).to.equal('err');
     })
 
@@ -181,7 +181,7 @@ describe('queues - lifecycle tests', function () {
         var resp = await fetch(global.HOST + `/take/@${ACC}/${subscriber_id}`, request);
         var json = await resp.json();
 
-        expect(json.error).to.equal('Tarantool error');
+        expect(json.error).to.equal('No such queue');
         expect(json.status).to.equal('err');
 
         global.log('Unsubscribe again...')
