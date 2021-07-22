@@ -6,12 +6,15 @@ module.exports = function useQueuesApi(app) {
     const router = new koaRouter();
     app.use(router.routes());
 
+    let slowsCounter = 0;
+
     router.get('/_stats', async (ctx) => {
         try {
             const res = await Tarantool.instance('tarantool').call('notification_stats');
             ctx.body = {
                 status: 'ok',
                 queues: res,
+                slowsCounter,
             };
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications /stats ${error.message}`);
@@ -61,8 +64,10 @@ module.exports = function useQueuesApi(app) {
             const res = await Tarantool.instance('tarantool').call('notification_subscribe', account, scopeIds);
 
             const elapse = new Date() - start;
-            if (elapse > 3000)
+            if (elapse > 3000) {
                 console.warn(`PULSE-SLOW: notifications @${account} ${elapse}`);
+                ++slowsCounter;
+            }
             //else
             //    console.log(`PULSE: notifications @${account} ${elapse}`);
 
