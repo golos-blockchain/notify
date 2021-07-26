@@ -100,7 +100,7 @@ function notification_take(account, subscriber_id, task_ids)
     queue_conds[queue_id] = true
     local waited = 0.0
     while waited < 20 and queue_conds[queue_id] do
-        local interval = 0.05
+        local interval = 0.25
         fiber.sleep(interval)
         waited = waited + interval
     end
@@ -162,12 +162,12 @@ function notification_cleanup()
             if q ~= nil then
                 local queue_id = queue_id(val[2], val[1])
 
-                if queue_conds[queue_id] ~= nil then
-                    queue_conds[queue_id] = nil
-                end
-
                 if box.space[queue_id] ~= nil then
                     box.space[queue_id]:drop()
+                end
+
+                if queue_conds[queue_id] ~= nil then
+                    queue_conds[queue_id] = nil
                 end
             end
         else
