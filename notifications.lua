@@ -49,7 +49,6 @@ function notification_unsubscribe(account, subscriber_id)
     end
 
     if queue_conds[queue_id] ~= nil then
-        queue_conds[queue_id]:signal()
         queue_conds[queue_id] = nil
     end
 
@@ -98,8 +97,13 @@ function notification_take(account, subscriber_id, task_ids)
         return { tasks = tasks, error = '/take already called for this queue' }
     end
 
-    queue_conds[queue_id] = fiber.cond()
-    queue_conds[queue_id]:wait(20)
+    queue_conds[queue_id] = true
+    local waited = 0.0
+    while waited < 20 and queue_conds[queue_id] do
+        local interval = 0.05
+        fiber.sleep(interval)
+        waited = waited + interval
+    end
     queue_conds[queue_id] = nil
 
     tasks = take_tasks(queue_id)
@@ -140,7 +144,7 @@ function notification_add(account, scope, add_counter, op_data, timestamp)
                 end
 
                 if queue_conds[queue_id] ~= nil then
-                    queue_conds[queue_id]:signal()
+                    queue_conds[queue_id] = false
                 end
             end
         end
@@ -159,7 +163,6 @@ function notification_cleanup()
                 local queue_id = queue_id(val[2], val[1])
 
                 if queue_conds[queue_id] ~= nil then
-                    queue_conds[queue_id]:signal()
                     queue_conds[queue_id] = nil
                 end
 
