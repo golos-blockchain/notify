@@ -99,7 +99,7 @@ function notification_take(account, subscriber_id, task_ids)
 
     queue_conds[queue_id] = true
     local waited = 0.0
-    while waited < 20 and queue_conds[queue_id] do
+    while waited < 5 and queue_conds[queue_id] do
         local interval = 0.25
         fiber.sleep(interval)
         waited = waited + interval
@@ -154,7 +154,7 @@ end
 function notification_cleanup()
     print('notification_cleanup')
     local now = fiber.clock64()
-    local qs = box.space.queues.index.by_update:select({1}, {iterator = 'GT', limit = 100})
+    local qs = box.space.queues.index.by_update:select({1}, {iterator = 'GT', limit = 5})
     for i,val in ipairs(qs) do
         if (now - val[4]) > 60*1000000 then -- 1 minute
             print('cleaning: ' .. val[2] .. '_' .. val[1])
