@@ -18,10 +18,7 @@ module.exports = function useQueuesApi(app) {
             };
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications /stats ${error.message}`);
-            ctx.body = {
-                status: 'err',
-                error: 'Tarantool error',
-            };
+            return returnError(ctx, 'Tarantool error');
         }
     });
 
@@ -68,12 +65,11 @@ module.exports = function useQueuesApi(app) {
                 console.warn(`PULSE-SLOW: notifications @${account} ${elapse}`);
                 ++slowsCounter;
             }
-            //else
-            //    console.log(`PULSE: notifications @${account} ${elapse}`);
 
             subscriber_id = res[0][0];
         } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${account} ${error.message}`);
+            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /subscribe @${account} ${error.message}`);
+            ctx.status = 400;
             ctx.body = {
                 subscriber_id: null,
                 status: 'err',
@@ -106,12 +102,8 @@ module.exports = function useQueuesApi(app) {
             const res = await Tarantool.instance('tarantool').call('notification_unsubscribe', account, parseInt(subscriber_id));
             was = res[0][0].was;
         } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${account} ${error.message}`);
-            ctx.body = {
-                status: 'err',
-                error: 'Tarantool error',
-            };
-            return;
+            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /unsubscribe @${account} ${error.message}`);
+            return returnError(ctx, 'Tarantool error');
         }
 
         ctx.body = {
@@ -137,17 +129,29 @@ module.exports = function useQueuesApi(app) {
 
         try {
             let res = await Tarantool.instance('tarantool').call('notification_take', account, parseInt(subscriber_id), remove_task_ids);
-            for (let task of res[0][0].tasks) {
+            res = res[0][0];
+            for (let task of res.tasks) {
                 task.scope = SCOPES[task.scope];
             }
+            if (res.error) {
+                console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /take @${account} ${res.error}`);
+                ctx.status = res.status || 400;
+                ctx.body = {
+                    tasks: [],
+                    status: 'err',
+                    error: res.error,
+                };
+                return;
+            }
             ctx.body = {
-                tasks: res[0][0].tasks,
+                tasks: res.tasks,
                 status: 'ok',
             };
         } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${account} ${error.message}`);
+            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /take @${account} ${error.message}`);
+            ctx.status = 400;
             ctx.body = {
-                tasks: null,
+                tasks: [],
                 status: 'err',
                 error: 'Tarantool error',
             };

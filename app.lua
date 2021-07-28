@@ -26,26 +26,17 @@ box.once('bootstrap', function()
     steem = box.schema.create_space('steem')
     steem:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
 
-    followers = box.schema.create_space('followers')
-    followers:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
-
     notifications = box.schema.create_space('notifications')
     notifications:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
 
-    webpush_subscribers = box.schema.create_space('webpush_subscribers')
-    webpush_subscribers:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
-
-    notifications_delivery_queue = box.schema.create_space('notifications_delivery_queue')
-    notifications_delivery_queue:create_index('primary', {type = 'tree', parts = {1, 'unsigned'}})
-
-    notification_queues = box.schema.create_space('notification_queues')
-    notification_queues:create_index('primary', {
+    queues = box.schema.create_space('queues')
+    queues:create_index('primary', {
         type = 'tree', parts = {1, 'unsigned'}
     })
-    notification_queues:create_index('by_acc_subscriber', {
+    queues:create_index('by_acc_subscriber', {
         type = 'tree', parts = {2, 'STR', 1, 'unsigned'}
     })
-    notification_queues:create_index('by_update', {
+    queues:create_index('by_update', {
         type = 'tree', parts = {4, 'unsigned'}, unique = false
     })
 

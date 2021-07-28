@@ -1,5 +1,5 @@
-queue = require 'queue'
 require 'table_utils'
+require 'queue_utils'
 fiber = require 'fiber'
 
 -- SCOPES = {
@@ -21,64 +21,92 @@ fiber = require 'fiber'
 --     'reserved4': 15
 -- }
 
-function notification_subscribe(account, scopes)
-    account = account:gsub('-', '_')
-    local q = box.space.notification_queues:auto_increment{account, scopes, fiber.clock64()}
+local queue_conds = {}
 
-    local queue_id = account .. '_' .. q[1]
-    queue.create_tube(queue_id, 'fifottl', {temporary = false, if_not_exists = true, ttr = 2})
+function notification_subscribe(account, scopes)
+    account = esc_account_name(account)
+    local q = box.space.queues:auto_increment{account, scopes, fiber.clock64()}
+
+    local queue_id = queue_id(account, q[1])
+
+    local queue_tasks = box.schema.create_space(queue_id)
+    queue_tasks:create_index('primary', {
+        type = 'tree', parts = {1, 'unsigned'}
+    })
 
     return q[1]
 end
 
 function notification_unsubscribe(account, subscriber_id)
-    account = account:gsub('-', '_')
-    local queue_id = account .. '_' .. subscriber_id
-    local the_tube = queue.tube[queue_id]
-    if the_tube == nil then
-        return { was = false } -- may be account tries to remove another acc's queue
+    local queue_id = queue_id(account, subscriber_id)
+    if box.space[queue_id] == nil then
+        return { was = false }
     end
 
-    local q = box.space.notification_queues:delete{subscriber_id}
+    local q = box.space.queues:delete{subscriber_id}
     if q == nil then
         return { was = false }
     end
 
-    the_tube:drop()
+    if queue_conds[queue_id] ~= nil then
+        queue_conds[queue_id] = nil
+    end
+
+    box.space[queue_id]:drop()
 
     return { was = true }
 end
 
-function notification_take(account, subscriber_id, task_ids)
-    account = account:gsub('-', '_')
-    local queue_id = account .. '_' .. subscriber_id
-
-    local the_tube = queue.tube[queue_id]
-    if the_tube == nil then
-        return { tasks = nil }
-    end
-
-    box.space.notification_queues:update(subscriber_id, {{'=', 4, fiber.clock64()}})
-
-    for idx,task_id in ipairs(task_ids) do
-        pcall(the_tube.delete, the_tube, task_id)
-    end
-
-    local task = the_tube:take(20)
-    if task ~= nil then
-      task = the_tube:release(task[1])
-    end
-
+local function take_tasks(queue_id)
     local tasks = {}
-    if task ~= nil then
-      tasks[1] = {
-        id = task[1],
-        scope = task[3].scope,
-        data = task[3].data,
-        timestamp = task[3].timestamp
-      }
+
+    if box.space[queue_id] == nil then
+        return tasks
     end
 
+    local qts = box.space[queue_id]:select(nil, { limit = 1 })
+    if #qts > 0 then
+        local qt = qts[1]
+        tasks[1] = normalize_task(qt)
+        box.space[queue_id]:delete(qt[1])
+    end
+
+    return tasks
+end
+
+function notification_take(account, subscriber_id, task_ids)
+    local tasks = {}
+
+    local found = box.space.queues:update(subscriber_id, {{'=', 4, fiber.clock64()}})
+    if found == nil then
+        return { tasks = tasks, error = 'No such queue' }
+    end
+
+    local queue_id = queue_id(account, subscriber_id)
+
+    if box.space[queue_id] == nil then
+        return { tasks = tasks, error = 'No such queue' }
+    end
+
+    tasks = take_tasks(queue_id)
+    if #tasks > 0 then
+        return { tasks = tasks }
+    end
+
+    if queue_conds[queue_id] ~= nil then
+        return { tasks = tasks, error = '/take already called for this queue' }
+    end
+
+    queue_conds[queue_id] = true
+    local waited = 0.0
+    while waited < 5 and queue_conds[queue_id] do
+        local interval = 0.25
+        fiber.sleep(interval)
+        waited = waited + interval
+    end
+    queue_conds[queue_id] = nil
+
+    tasks = take_tasks(queue_id)
     return { tasks = tasks }
 end
 
@@ -101,18 +129,22 @@ function notification_add(account, scope, add_counter, op_data, timestamp)
 
     if op_data ~= nil then
         account = account:gsub('-', '_')
-        local qs = box.space.notification_queues.index.by_acc_subscriber:select{account}
+        local qs = box.space.queues.index.by_acc_subscriber:select{account}
         for i,val in ipairs(qs) do
             local q_scope = val[3]
             if q_scope['0'] or q_scope[tostring(scope)] then
-                local queue_id = val[2] .. '_' .. val[1]
                 -- if it is not custom_json
                 if not op_data[1] then
-                  op_data = { op_data['type'], op_data }
+                    op_data = { op_data['type'], op_data }
                 end
-                local the_tube = queue.tube[queue_id]
-                if the_tube ~= nil then
-                    queue.tube[queue_id]:put({ scope = scope, data = op_data, timestamp = timestamp})
+
+                local queue_id = queue_id(account, val[1])
+                if box.space[queue_id] ~= nil then
+                    box.space[queue_id]:auto_increment{{scope = scope, data = op_data, timestamp = timestamp}}
+                end
+
+                if queue_conds[queue_id] ~= nil then
+                    queue_conds[queue_id] = false
                 end
             end
         end
@@ -122,16 +154,20 @@ end
 function notification_cleanup()
     print('notification_cleanup')
     local now = fiber.clock64()
-    local qs = box.space.notification_queues.index.by_update:select({1}, {iterator = 'GT', limit = 100})
+    local qs = box.space.queues.index.by_update:select({1}, {iterator = 'GT', limit = 5})
     for i,val in ipairs(qs) do
         if (now - val[4]) > 60*1000000 then -- 1 minute
             print('cleaning: ' .. val[2] .. '_' .. val[1])
-            local q = box.space.notification_queues:delete{val[1]}
+            local q = box.space.queues:delete{val[1]}
             if q ~= nil then
-                local queue_id = val[2] .. '_' .. val[1]
-                local the_tube = queue.tube[queue_id]
-                if the_tube ~= nil then
-                    the_tube:drop()
+                local queue_id = queue_id(val[2], val[1])
+
+                if box.space[queue_id] ~= nil then
+                    box.space[queue_id]:drop()
+                end
+
+                if queue_conds[queue_id] ~= nil then
+                    queue_conds[queue_id] = nil
                 end
             end
         else
@@ -141,8 +177,9 @@ function notification_cleanup()
     print('notification_cleanup_end')
 end
 
+x = 1
 function notification_stats()
-    return box.space.notification_queues:count()
+    return box.space.queues:count()
 end
 
 function notification_read(account, scope)
@@ -155,74 +192,4 @@ function notification_read(account, scope)
   if count == nil or count <= 0 then return tuple end
   local res = space:update(account, {{'-', 2, count}, {'=', scope + 2, 0}})
   return res
-end
-
-function add_follower(account, follower)
-  local space = box.space.followers
-  local res = space:select({account})
-  if #res == 0 then return nil end
-  local followers = res[1][2]
-  if not contains(followers, follower) then
-    table.insert(followers, #followers+1, follower)
-    space:update(account, {{'=', 2, followers}})
-  end
-  return true
-end
-
-function webpush_subscribe(account, new_subscription)
-  local space = box.space.webpush_subscribers
-  local res = space:select{account}
-  if #res > 0 then
-    local subscriptions = res[1][2]
-    local new_auth = new_subscription['keys']['auth']
-    for k,v in ipairs(subscriptions) do
-      if v['keys']['auth'] == new_auth then
-        return
-      end
-    end
-    if #subscriptions >= 3 then
-       table.remove(subscriptions, 1)
-    end
-    table.insert(subscriptions, new_subscription)
-    space:update(account, {{'=', 2, subscriptions}})
-  else
-    local tuple = {account, {new_subscription}, nil, nil}
-    space:insert(tuple)
-  end
-end
-
-function webpush_unsubscribe(account, subscription_auth)
-  local space = box.space.webpush_subscribers
-  local res = space:select{account}
-  if #res > 0 then
-    local subscriptions = res[1][2]
-    for k,v in ipairs(subscriptions) do
-      if v['keys']['auth'] == subscription_auth then
-        table.remove(subscriptions, k)
-      end
-      if #subscriptions > 0 then
-        space:update(account, {{'=', 2, subscriptions}})
-      else
-        space:delete{account}
-      end
-    end
-  end
-end
-
-function webpush_get_delivery_queue()
-  local space = box.space.notifications_delivery_queue
-  local queue = space:select{}
-  local result = {}
-  for k,v in ipairs(queue) do
-    local account = v[2]
-    local subscription = box.space.webpush_subscribers:select{account}
-    if #subscription > 0 then
-      subscription = subscription[1]
-      table.insert(result, {account, subscription[2], v[4], v[5], v[6], v[7]})
-      local current_time = math.floor(fiber.time())
-      box.space.webpush_subscribers:update(account, {{'=', 3, current_time}, {'=', 4, v[3]}})
-    end
-  end
-  space:truncate()
-  return result
 end
