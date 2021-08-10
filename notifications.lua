@@ -21,8 +21,6 @@ fiber = require 'fiber'
 --     'reserved4': 15
 -- }
 
-local queue_conds = {}
-
 function notification_subscribe(account, scopes)
     account = esc_account_name(account)
     local q = box.space.queues:auto_increment{account, scopes, fiber.clock64()}
@@ -48,9 +46,7 @@ function notification_unsubscribe(account, subscriber_id)
         return { was = false }
     end
 
-    if queue_conds[queue_id] ~= nil then
-        queue_conds[queue_id] = nil
-    end
+    unlock_entity(queue_id)
 
     box.space[queue_id]:drop()
 
@@ -89,24 +85,6 @@ function notification_take(account, subscriber_id, task_ids)
     end
 
     tasks = take_tasks(queue_id)
-    if #tasks > 0 then
-        return { tasks = tasks }
-    end
-
-    if queue_conds[queue_id] ~= nil then
-        return { tasks = tasks, error = '/take already called for this queue' }
-    end
-
-    queue_conds[queue_id] = true
-    local waited = 0.0
-    while waited < 20 and queue_conds[queue_id] do
-        local interval = 0.05
-        fiber.sleep(interval)
-        waited = waited + interval
-    end
-    queue_conds[queue_id] = nil
-
-    tasks = take_tasks(queue_id)
     return { tasks = tasks }
 end
 
@@ -143,9 +121,7 @@ function notification_add(account, scope, add_counter, op_data, timestamp)
                     box.space[queue_id]:auto_increment{{scope = scope, data = op_data, timestamp = timestamp}}
                 end
 
-                if queue_conds[queue_id] ~= nil then
-                    queue_conds[queue_id] = false
-                end
+                unlock_entity(queue_id)
             end
         end
     end
@@ -166,9 +142,7 @@ function notification_cleanup()
                     box.space[queue_id]:drop()
                 end
 
-                if queue_conds[queue_id] ~= nil then
-                    queue_conds[queue_id] = nil
-                end
+                unlock_entity(queue_id)
             end
         else
             break

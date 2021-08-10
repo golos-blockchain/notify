@@ -1,6 +1,6 @@
 const koaRouter = require('koa-router');
 const Tarantool = require('../tarantool');
-const { returnError, SCOPES } = require('../utils');
+const { returnError, SCOPES, sleep } = require('../utils');
 
 module.exports = function useQueuesApi(app) {
     const router = new koaRouter();
@@ -130,6 +130,34 @@ module.exports = function useQueuesApi(app) {
         try {
             let res = await Tarantool.instance('tarantool').call('notification_take', account, parseInt(subscriber_id), remove_task_ids);
             res = res[0][0];
+            if (!res.tasks.length && !res.error) {
+                const queue_id = 'queue_' + account.split('-').join('_') + '_' + subscriber_id;
+                console.log(queue_id, 'No tasks instantly, waiting...');
+
+                const le = await Tarantool.instance('tarantool').call('lock_entity', queue_id);
+                if (!le[0][0]) {
+                    ctx.status = res.status || 400;
+                    ctx.body = {
+                        tasks: [],
+                        status: 'err',
+                        error: '/take already called for this queue',
+                    };
+                    return;
+                }
+
+                let waited = 0;
+                while (waited < 20000) {
+                    const hl = await Tarantool.instance('tarantool').call('has_lock', queue_id);
+                    if (!hl[0][0]) break;
+                    await sleep(100);
+                    waited += 100;
+                }
+
+                await Tarantool.instance('tarantool').call('unlock_entity', queue_id);
+
+                res = await Tarantool.instance('tarantool').call('notification_take', account, parseInt(subscriber_id), []);
+                res = res[0][0];
+            }
             for (let task of res.tasks) {
                 task.scope = SCOPES[task.scope];
             }
