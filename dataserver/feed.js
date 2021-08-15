@@ -21,14 +21,14 @@ async function processMessage(op) {
         SCOPES.indexOf('message'),
         false,
         opJson,
-        new Date().toISOString()
+        op.timestamp_prev,
     );
     await Tarantool.instance('tarantool').call('notification_add',
         data.to,
         SCOPES.indexOf('message'),
         opJson[0] === 'private_message',
         opJson,
-        new Date().toISOString()
+        op.timestamp_prev,
     );
 }
 
@@ -51,7 +51,7 @@ async function processMentions(text, op) {
             SCOPES.indexOf('mention'),
             false,
             op,
-            new Date().toISOString()
+            op.timestamp_prev,
         );
     }
 }
@@ -85,7 +85,7 @@ async function processComment(op) {
             SCOPES.indexOf('comment_reply'),
             true,
             op,
-            new Date().toISOString()
+            op.timestamp_prev,
         );
     }
 }
@@ -99,14 +99,14 @@ async function processTransfer(op) {
         SCOPES.indexOf('send'),
         true,
         op,
-        new Date().toISOString()
+        op.timestamp_prev,
     );
     await Tarantool.instance('tarantool').call('notification_add',
         op.to,
         SCOPES.indexOf('receive'),
         true,
         op,
-        new Date().toISOString()
+        op.timestamp_prev,
     );
 }
 
@@ -119,7 +119,7 @@ async function processDonate(op) {
         SCOPES.indexOf('donate'),
         true,
         op,
-        new Date().toISOString()
+        op.timestamp_prev,
     );
 }
 
@@ -144,12 +144,13 @@ async function processOp(op_data) {
 module.exports = function startFeeding() {
     console.log('Started feeding from blockchain');
 
-    golos.api.streamOperations('head', async (err, op) => {
+    golos.api.streamOperations(async (err, op, tx, block) => {
         if (err) {
             console.error('FEED: streamOperations fail');
             console.error(err);
             return;
         }
+        op[1].timestamp_prev = block.timestamp_prev;
         await processOp(op);
     });
 }

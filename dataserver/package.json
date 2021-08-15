@@ -13,7 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "fetch-cookie": "^1.0.0",
-    "golos-classic-js": "^0.8.2",
+    "golos-classic-js": "^0.8.6",
     "koa": "^2.13.0",
     "koa-body": "^4.2.0",
     "koa-cors": "0.0.16",
