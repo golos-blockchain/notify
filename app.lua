@@ -1,7 +1,8 @@
 fiber = require 'fiber'
 httpd = require('http.server')
 json = require('json')
-require 'notifications'
+require 'counters'
+require 'queues'
 require 'locks'
 require 'stats'
 require 'guid'
@@ -26,8 +27,8 @@ box.once('bootstrap', function()
     steem = box.schema.create_space('steem')
     steem:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
 
-    notifications = box.schema.create_space('notifications')
-    notifications:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
+    counters = box.schema.create_space('counters')
+    counters:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
 
     queues = box.schema.create_space('queues')
     queues:create_index('primary', {

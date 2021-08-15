@@ -1,4 +1,4 @@
-FROM tarantool/tarantool:1.7
+FROM tarantool/tarantool:2.7
 
 COPY *.lua *.sh /opt/tarantool/
 

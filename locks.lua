@@ -15,3 +15,9 @@ function unlock_entity(entity_name)
     local space = box.space.locks
     return space:delete{entity_name}
 end
+
+function has_lock(entity_name)
+    local space = box.space.locks
+    local res = space:select{entity_name}
+    return #res > 0
+end

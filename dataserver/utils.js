@@ -59,8 +59,13 @@ const checkOrigin = (ctx) => {
     return null;
 };
 
+const sleep = (msecs) => {
+    return new Promise((resolve) => setTimeout(resolve, msecs));
+};
+
 module.exports = {
     SCOPES,
     returnError,
     checkOrigin,
+    sleep,
 };

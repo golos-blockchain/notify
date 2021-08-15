@@ -10,18 +10,6 @@ services:
     volumes:
       - ./tarantool:/var/lib/tarantool
 
-  datafeed:
-    image: golosblockchain/notify:datafeed
-    restart: always
-    build:
-      context: .
-      dockerfile: Dockerfile-datafeed
-    depends_on:
-      - datastore
-    environment:
-      NODE_URL: https://api-full.golos.id
-      TARANTOOL_HOST: datastore
-
   dataserver:
     image: golosblockchain/notify:dataserver
     restart: always

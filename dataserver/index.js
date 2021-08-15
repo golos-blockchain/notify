@@ -14,6 +14,8 @@ const useCountersApi = require('./api/counters');
 const useQueuesApi = require('./api/queues');
 const useMsgsApi = require('./api/msgs');
 
+const startFeeding = require('./feed');
+
 const NODE_URL = process.env.NODE_URL || 'https://api.golos.id';
 golos.config.set('websocket', NODE_URL);
 if (process.env.CHAIN_ID) {
@@ -70,4 +72,8 @@ useCountersApi(app);
 useQueuesApi(app);
 useMsgsApi(app);
 
+console.log('Connecting to', NODE_URL);
+
 app.listen(8805, () => console.log('running on port 8805'));
+
+startFeeding();
