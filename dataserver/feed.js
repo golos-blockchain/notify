@@ -1,11 +1,33 @@
 const golos = require('golos-classic-js');
 const Tarantool = require('./tarantool');
 const { SCOPES } = require('./utils');
+const { signal_fire } = require('./signals');
+const { putToQueues, make_queue_id } = require('./api/queues');
 
 const processedPosts = {};
 
 function getPostKey(op) {
     return op.author + '/' + op.permlink;
+}
+
+async function cleanupQueues() {
+    console.log('cleanupQueues');
+    const res = await Tarantool.instance('tarantool').call(
+        'queue_list_for_cleanup');
+    if (!res[0][0]) return;
+    const { queue_ids } = res[0][0];
+    if (!queue_ids && !queue_ids.length) return;
+
+    for (const [acc, id] of queue_ids) {
+        console.log('cleaning:', acc, id);
+
+        await Tarantool.instance('tarantool').call(
+            'queue_unsubscribe', acc, id,
+        );
+
+        signal_fire(make_queue_id(acc, id));
+    }
+    console.log('cleanupQueues end');
 }
 
 async function processMessage(op) {
@@ -16,20 +38,20 @@ async function processMessage(op) {
         return;
     const data = opJson[1];
     console.log(opJson[0], data.from, data.to);
-    await Tarantool.instance('tarantool').call('notification_add',
-        data.from,
-        SCOPES.indexOf('message'),
-        false,
-        opJson,
-        op.timestamp_prev,
-    );
-    await Tarantool.instance('tarantool').call('notification_add',
+    await Tarantool.instance('tarantool').call('counter_add',
         data.to,
         SCOPES.indexOf('message'),
-        opJson[0] === 'private_message',
-        opJson,
-        op.timestamp_prev,
     );
+    await putToQueues(
+        data.from,
+        'message',
+        opJson,
+        op.timestamp_prev);
+    await putToQueues(
+        data.to,
+        'message',
+        opJson,
+        op.timestamp_prev);
 }
 
 async function processMentions(text, op) {
@@ -46,13 +68,11 @@ async function processMentions(text, op) {
         }
         console.log('--- mention: ', op.author, op.permlink, '@' + mention);
 
-        await Tarantool.instance('tarantool').call('notification_add',
+        await putToQueues(
             mention,
-            SCOPES.indexOf('mention'),
-            false,
+            'mention',
             op,
-            op.timestamp_prev,
-        );
+            op.timestamp_prev);
     }
 }
 
@@ -80,13 +100,15 @@ async function processComment(op) {
     processMentions(commentBody, op)
 
     if (op.parent_author && op.parent_author !== op.author) {
-        await Tarantool.instance('tarantool').call('notification_add',
+        await Tarantool.instance('tarantool').call('counter_add',
             op.parent_author,
             SCOPES.indexOf('comment_reply'),
-            true,
-            op,
-            op.timestamp_prev,
         );
+        await putToQueues(
+            op.parent_author,
+            'comment_reply',
+            op,
+            op.timestamp_prev);
     }
 }
 
@@ -94,33 +116,41 @@ async function processTransfer(op) {
     if (op.from == op.to)
         return;
     console.log('transfer', op.from, op.to);
-    await Tarantool.instance('tarantool').call('notification_add',
+
+    await Tarantool.instance('tarantool').call('counter_add',
         op.from,
         SCOPES.indexOf('send'),
-        true,
-        op,
-        op.timestamp_prev,
     );
-    await Tarantool.instance('tarantool').call('notification_add',
+    await Tarantool.instance('tarantool').call('counter_add',
         op.to,
         SCOPES.indexOf('receive'),
-        true,
-        op,
-        op.timestamp_prev,
     );
+    await putToQueues(
+        op.from,
+        'send',
+        op,
+        op.timestamp_prev);
+    await putToQueues(
+        op.to,
+        'receive',
+        op,
+        op.timestamp_prev);
 }
 
 async function processDonate(op) {
     if (op.from == op.to)
         return;
     console.log('donate', op.from, op.to);
-    await Tarantool.instance('tarantool').call('notification_add',
+
+    await Tarantool.instance('tarantool').call('counter_add',
         op.to,
         SCOPES.indexOf('donate'),
-        true,
-        op,
-        op.timestamp_prev,
     );
+    await putToQueues(
+        op.to,
+        'donate',
+        op,
+        op.timestamp_prev);
 }
 
 async function processOp(op_data) {
@@ -152,5 +182,8 @@ module.exports = function startFeeding() {
         }
         op[1].timestamp_prev = block.timestamp_prev;
         await processOp(op);
+
+        if (block.block_num % 10 === 0)
+            await cleanupQueues();
     });
 }

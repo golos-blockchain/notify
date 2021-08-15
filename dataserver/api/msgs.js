@@ -3,6 +3,8 @@ const golos = require('golos-classic-js');
 const Tarantool = require('../tarantool');
 const { returnError, SCOPES } = require('../utils');
 const { GOLOS_CHECK_VALUE, GOLOS_CHECK_PARAM_ACCOUNT } = require('../offchain_validators');
+const { signal_fire } = require('../signals');
+const { putToQueues } = require('./queues');
 
 class private_message_operation {
     constructor(obj) {
@@ -87,16 +89,13 @@ module.exports = function useMsgsApi(app) {
         const now = new Date().toISOString().split('.')[0];
 
         try {
-            const res = await Tarantool.instance('tarantool').call(
-                'notification_add',
+            await putToQueues(
                 from,
-                SCOPES.indexOf('message'),
-                false,
+                'message',
                 ['private_message', {...params, _offchain: true}],
-                now,
-            );
+                now);
         } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${from} ${error.message}`);
+            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain @${from} ${error.message}`);
             ctx.body = {
                 status: 'err',
                 error: 'Tarantool error when notifying from',
@@ -105,19 +104,16 @@ module.exports = function useMsgsApi(app) {
         }
 
         try {
-            const res = await Tarantool.instance('tarantool').call(
-                'notification_add',
+            await putToQueues(
                 to,
-                SCOPES.indexOf('message'),
-                false,
+                'message',
                 ['private_message', {...params, _offchain: true}],
-                now,
-            );
+                now);
             ctx.body = {
                 status: 'ok',
             };
         } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications @${from} ${error.message}`);
+            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain @${from} ${error.message}`);
             ctx.body = {
                 status: 'err',
                 error: 'Tarantool error when notifying to',

@@ -1,6 +1,37 @@
 const koaRouter = require('koa-router');
 const Tarantool = require('../tarantool');
 const { returnError, SCOPES, sleep } = require('../utils');
+const { signal_create, signal_fire, signal_check } = require('../signals');
+
+function make_queue_id(account, subscriber_id) {
+    return 'queue_' + account.split('-').join('_') + '_' + subscriber_id;
+}
+
+async function putToQueues(account, scope, opData, timestamp) {
+    scope = SCOPES.indexOf(scope)
+
+    const res = await Tarantool.instance('tarantool').call(
+        'queue_list', account, scope,
+    );
+    if (!res[0][0]) return;
+    const { queue_ids } = res[0][0];
+    if (!queue_ids && !queue_ids.length) return;
+
+    // if operation is not custom_json
+    if (!opData[1]) {
+        opData = [opData.type, opData];
+    }
+
+    for (const [acc, id] of queue_ids) {
+        const queue_id = make_queue_id(acc, id);
+
+        await Tarantool.instance('tarantool').call(
+            'queue_put', queue_id, scope, opData, timestamp,
+        );
+
+        signal_fire(queue_id);
+    }
+}
 
 module.exports = function useQueuesApi(app) {
     const router = new koaRouter();
@@ -10,14 +41,14 @@ module.exports = function useQueuesApi(app) {
 
     router.get('/_stats', async (ctx) => {
         try {
-            const res = await Tarantool.instance('tarantool').call('notification_stats');
+            const res = await Tarantool.instance('tarantool').call('queue_stats');
             ctx.body = {
                 status: 'ok',
                 queues: res,
                 slowsCounter,
             };
         } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG notifications /stats ${error.message}`);
+            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /stats ${error.message}`);
             return returnError(ctx, 'Tarantool error');
         }
     });
@@ -58,11 +89,11 @@ module.exports = function useQueuesApi(app) {
         try {
             const start = new Date();
 
-            const res = await Tarantool.instance('tarantool').call('notification_subscribe', account, scopeIds);
+            const res = await Tarantool.instance('tarantool').call('queue_subscribe', account, scopeIds);
 
             const elapse = new Date() - start;
             if (elapse > 3000) {
-                console.warn(`PULSE-SLOW: notifications @${account} ${elapse}`);
+                console.warn(`PULSE-SLOW: queues @${account} ${elapse}`);
                 ++slowsCounter;
             }
 
@@ -99,12 +130,14 @@ module.exports = function useQueuesApi(app) {
 
         let was = true;
         try {
-            const res = await Tarantool.instance('tarantool').call('notification_unsubscribe', account, parseInt(subscriber_id));
+            const res = await Tarantool.instance('tarantool').call('queue_unsubscribe', account, parseInt(subscriber_id));
             was = res[0][0].was;
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /unsubscribe @${account} ${error.message}`);
             return returnError(ctx, 'Tarantool error');
         }
+
+        signal_fire(make_queue_id(account, subscriber_id));
 
         ctx.body = {
             was,
@@ -128,14 +161,13 @@ module.exports = function useQueuesApi(app) {
         const remove_task_ids = task_ids ? task_ids.split('-').map(x => +x) : [];
 
         try {
-            let res = await Tarantool.instance('tarantool').call('notification_take', account, parseInt(subscriber_id), remove_task_ids);
+            let res = await Tarantool.instance('tarantool').call('queue_take', account, parseInt(subscriber_id), remove_task_ids);
             res = res[0][0];
             if (!res.tasks.length && !res.error) {
-                const queue_id = 'queue_' + account.split('-').join('_') + '_' + subscriber_id;
+                const queue_id = make_queue_id(account, subscriber_id);
                 console.log(queue_id, 'No tasks instantly, waiting...');
 
-                const le = await Tarantool.instance('tarantool').call('lock_entity', queue_id);
-                if (!le[0][0]) {
+                if (!signal_create(queue_id)) {
                     ctx.status = res.status || 400;
                     ctx.body = {
                         tasks: [],
@@ -147,15 +179,14 @@ module.exports = function useQueuesApi(app) {
 
                 let waited = 0;
                 while (waited < 20000) {
-                    const hl = await Tarantool.instance('tarantool').call('has_lock', queue_id);
-                    if (!hl[0][0]) break;
+                    if (!signal_check(queue_id)) break;
                     await sleep(100);
                     waited += 100;
                 }
 
-                await Tarantool.instance('tarantool').call('unlock_entity', queue_id);
+                signal_fire(queue_id);
 
-                res = await Tarantool.instance('tarantool').call('notification_take', account, parseInt(subscriber_id), []);
+                res = await Tarantool.instance('tarantool').call('queue_take', account, parseInt(subscriber_id), []);
                 res = res[0][0];
             }
             for (let task of res.tasks) {
@@ -186,3 +217,6 @@ module.exports = function useQueuesApi(app) {
         }
     });
 }
+
+module.exports.putToQueues = putToQueues;
+module.exports.make_queue_id = make_queue_id;
