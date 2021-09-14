@@ -37,9 +37,9 @@ module.exports = function useAuthApi(app) {
                     Origin: 'http://' + SITE_DOMAIN,
                 },
             });
-        if (!res.data) {
-            console.error(account, res);
-            return returnError(ctx, 'Request to Golos Auth Service failed');
+        if (!res) {
+            console.error('Cannot login in auth service. Looks like there is wrong AUTH_HOST in config, or auth service is down. AUTH_HOST:', AUTH_HOST);
+            return returnError(ctx, 'Cannot connect auth service');
         }
         if (res.data.already_authorized !== account) {
             console.error(account, res.data);
