@@ -15,22 +15,32 @@ describe('queues - data tests', function () {
             global.log(`Login to ${ACC}...`)
 
             global.session = null;
-            var login_challenge = await global.obtainLoginChallenge(ACC);
+            var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-            var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+            var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
             expect(json.error).to.equal(undefined);
             expect(json.status).to.equal('ok');
+
+            var json = await global.login(ACC, AuthClient.session);
+            expect(json.error).to.equal(undefined);
+            expect(json.status).to.equal('ok');
+
             global.sessionAcc = global.session;
         }
         if (!global.sessionAcc2) {
             global.log(`Login to ${ACC2}...`)
 
             global.session = null;
-            var login_challenge = await global.obtainLoginChallenge(ACC2);
+            var login_challenge = await AuthClient.obtainLoginChallenge(ACC2);
 
-            var json = await global.signAndAuth(login_challenge, ACC2, ACC_POSTING);
+            var json = await AuthClient.signAndAuth(login_challenge, ACC2, ACC_POSTING);
             expect(json.error).to.equal(undefined);
             expect(json.status).to.equal('ok');
+
+            var json = await global.login(ACC2, AuthClient.session);
+            expect(json.error).to.equal(undefined);
+            expect(json.status).to.equal('ok');
+
             global.sessionAcc2 = global.session;
         }
     })
