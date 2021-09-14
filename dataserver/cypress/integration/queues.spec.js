@@ -12,9 +12,13 @@ describe('queues - lifecycle tests', function () {
     it('/subscribe - cross-account', async function() {
         global.log('Login...')
 
-        var login_challenge = await global.obtainLoginChallenge(ACC);
+        var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+
+        var json = await global.login(ACC, AuthClient.session);
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
 
@@ -44,9 +48,13 @@ describe('queues - lifecycle tests', function () {
     it('/subscribe - good', async function() {
         global.log('Login...')
 
-        var login_challenge = await global.obtainLoginChallenge(ACC);
+        var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+
+        var json = await global.login(ACC, AuthClient.session);
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
 
@@ -68,9 +76,13 @@ describe('queues - lifecycle tests', function () {
     it('/take - cross-account, no subscribe', async function() {
         global.log('Login...')
 
-        var login_challenge = await global.obtainLoginChallenge(ACC);
+        var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+
+        var json = await global.login(ACC, AuthClient.session);
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
 
@@ -100,9 +112,13 @@ describe('queues - lifecycle tests', function () {
     it('/take - login, but no subscribe', async function() {
         global.log('Login...')
 
-        var login_challenge = await global.obtainLoginChallenge(ACC);
+        var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+
+        var json = await global.login(ACC, AuthClient.session);
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
 
@@ -121,9 +137,13 @@ describe('queues - lifecycle tests', function () {
     it('/take - good + /unsubscribe', async function() {
         global.log('Login...')
 
-        var login_challenge = await global.obtainLoginChallenge(ACC);
+        var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-        var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+
+        var json = await global.login(ACC, AuthClient.session);
         expect(json.error).to.equal(undefined);
         expect(json.status).to.equal('ok');
 

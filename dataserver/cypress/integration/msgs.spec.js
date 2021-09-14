@@ -29,22 +29,42 @@ describe('msgs offchain sending tests', function () {
             global.log(`Login to ${ACC}...`)
 
             global.session = null;
-            var login_challenge = await global.obtainLoginChallenge(ACC);
+            var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-            var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+            var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
             expect(json.error).to.equal(undefined);
             expect(json.status).to.equal('ok');
+
+            console.log('session1: ' + AuthClient.session);
+
+            var json = await global.login(ACC, AuthClient.session);
+            expect(json.error).to.equal(undefined);
+            expect(json.status).to.equal('ok');
+
+            expect(global.session).not.to.equal(undefined);
+            console.log('session2: ' + global.session);
+
             global.sessionAcc = global.session;
         }
         if (!global.sessionAcc2) {
             global.log(`Login to ${ACC2}...`)
 
-            global.session = null;
-            var login_challenge = await global.obtainLoginChallenge(ACC2);
+            AuthClient.session = null;
+            var login_challenge = await AuthClient.obtainLoginChallenge(ACC2);
 
-            var json = await global.signAndAuth(login_challenge, ACC2, ACC_POSTING);
+            var json = await AuthClient.signAndAuth(login_challenge, ACC2, ACC_POSTING);
             expect(json.error).to.equal(undefined);
             expect(json.status).to.equal('ok');
+
+            console.log('session1: ' + AuthClient.session);
+
+            var json = await global.login(ACC2, AuthClient.session);
+            expect(json.error).to.equal(undefined);
+            expect(json.status).to.equal('ok');
+
+            expect(global.session).not.to.equal(undefined);
+            console.log('session2: ' + global.session);
+
             global.sessionAcc2 = global.session;
         }
     })

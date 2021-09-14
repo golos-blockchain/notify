@@ -22,64 +22,44 @@ it('/ healthcheck: server is running and connects to Golos node', async function
     expect(resp.version.length).to.be.at.least('1.0-dev'.length);
 });
 
-it('/login_account - missing account', async function() {
-    global.log('step 1: login_challenge')
+it('/login_account', async function() {
+    global.log('step 1: auth service: login_challenge')
 
-    var login_challenge = await global.obtainLoginChallenge('eveevileve');
+    var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-    global.log('step 2: signing and authorizing')
+    global.log('step 2: auth service: signing and authorizing')
 
-    const signatures = {};
+    var auth = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
+    expect(auth.error).to.equal(undefined);
+    expect(auth.status).to.equal('ok');
+    expect(typeof auth.guid).to.equal('string');
+    expect(auth.guid.length).to.be.above(0);
 
-    var body = {
-        account: 'eveevileve',
-        signatures,
-    };
-    var request = {...getRequestBase(),
-        body: JSON.stringify(body),
-    };
+    global.log('account tarantool guid: ' + auth.guid);
 
-    var resp = await fetch(global.HOST + '/login_account', request);
+    global.log('X-Auth-Session: ' + AuthClient.session);
 
-    var json = await resp.json();
-    expect(json.error).to.equal('missing blockchain account');
-    expect(json.status).to.equal('err');
-});
+    global.log('step 3: now login at notify service')
 
-it('/login_account - wrong signature', async function() {
-    global.log('step 1: login_challenge')
-
-    var login_challenge = await global.obtainLoginChallenge(ACC);
-
-    global.log('step 2: signing and authorizing')
-
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_ACTIVE);
-    expect(json.error).to.equal('wrong signatures');
-    expect(json.status).to.equal('err');
-});
-
-it('/login_account - good', async function() {
-    global.log('step 1: login_challenge')
-
-    var login_challenge = await global.obtainLoginChallenge(ACC);
-
-    global.log('step 2: signing and authorizing')
-
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+    var json = await global.login(ACC, AuthClient.session);
     expect(json.error).to.equal(undefined);
     expect(json.status).to.equal('ok');
-    expect(typeof json.guid).to.equal('string');
-    expect(json.guid.length).to.be.above(0);
 
-    global.log('account tarantool guid:', json.guid);
+    global.log('X-Session: ' + global.session);
+
+    expect(global.session).not.to.equal(undefined);
 });
 
 it('/logout_account', async function() {
     global.log('Login...')
 
-    var login_challenge = await global.obtainLoginChallenge(ACC);
+    var login_challenge = await AuthClient.obtainLoginChallenge(ACC);
 
-    var json = await global.signAndAuth(login_challenge, ACC, ACC_POSTING);
+    var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING);
+    expect(json.error).to.equal(undefined);
+    expect(json.status).to.equal('ok');
+
+    var json = await global.login(ACC, AuthClient.session);
     expect(json.error).to.equal(undefined);
     expect(json.status).to.equal('ok');
 
