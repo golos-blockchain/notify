@@ -5,15 +5,11 @@ const secureRandom = require('secure-random');
 const axios = require('axios');
 
 const Tarantool = require('../tarantool');
-const { checkOrigin, returnError } = require('../utils');
+const { returnError } = require('../utils');
 
 module.exports = function useAuthApi(app) {
     const router = new koaRouter();
     app.use(router.routes());
-
-    axios.interceptors.response.use(
-        res => res,
-        err => err.response);
 
     router.post('/login_account', async (ctx) => {
         let params = ctx.request.body;
@@ -26,17 +22,25 @@ module.exports = function useAuthApi(app) {
             return returnError(ctx, 'authSession is required');
         }
 
-        const { AUTH_HOST, } = process.env;
+        axios.interceptors.response.use(
+            res => res,
+            err => err.response);
 
-        const res = await axios.post('http://' + AUTH_HOST + '/api/login_account',
+        const { AUTH_HOST, SITE_DOMAIN, } = process.env;
+
+        const res = await axios.post(new URL('/api/login_account', AUTH_HOST).toString(),
             {
                 account,
             }, {
                 headers: {
                     'X-Auth-Session': authSession,
-                    Origin: 'http://localhost',
+                    Origin: 'http://' + SITE_DOMAIN,
                 },
             });
+        if (!res) {
+            console.error('Cannot login in auth service. Looks like there is wrong AUTH_HOST in config, or auth service is down. AUTH_HOST:', AUTH_HOST);
+            return returnError(ctx, 'Cannot connect auth service');
+        }
         if (res.data.already_authorized !== account) {
             console.error(account, res.data);
             return returnError(ctx, res.data.error);
