@@ -1,5 +1,4 @@
 fiber = require 'fiber'
-httpd = require('http.server')
 json = require('json')
 require 'counters'
 require 'queues'
@@ -86,14 +85,4 @@ function root_handler(req)
     return send_json(req, {status = 'ok'})
 end
 
-function get_inactive_users(req)
-    return send_json(req, inactive_users())
-end
-
-httpd = httpd.new('0.0.0.0', 8082)
-
-httpd:route({ path = '/', method = 'GET' }, root_handler)
-httpd:route({ path = '/inactive_users', method = 'GET' }, get_inactive_users)
-
-httpd:start()
 -- require('console').start()

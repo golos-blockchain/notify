@@ -26,33 +26,3 @@ function update_actions(account, type)
         space:insert({account, user_type, actions})
     end
 end
-
-function inactive_users()
-    local space = box.space.actions
-    local index = space.index.secondary
-    local accounts = index:select{NEW_USER}
-    
-    local time = os.time()
-    local result = {
-        inactive_one_week = {},
-        inactive_two_weeks = {}
-    }
-
-    for _, account in pairs(accounts) do
-        local cur = account[3]
-        if ((time - cur.registered) > two_weeks) and is_inactive(cur) then
-            table.insert(result.inactive_two_weeks, account[1])
-        elseif ((time - cur.registered) > one_week) and (not cur.post) then 
-            table.insert(result.inactive_one_week, account[1])
-        end
-    end
-    return result
-end
-
-function is_inactive(user)
-    return  (not user.post)     and
-            (not user.vote)     and
-            (not user.flag)     and
-            (not user.comment)  and
-            (not user.transfer)
-end
