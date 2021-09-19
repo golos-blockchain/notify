@@ -5,7 +5,7 @@ const koaRouter = require('koa-router');
 const cors = require('koa-cors');
 const livereload = require('koa-livereload');
 const RateLimit = require('koa2-ratelimit').RateLimit;
-const golos = require('golos-classic-js');
+const golos = require('golos-lib-js');
 
 const version = require('./version');
 const errorHandler = require('./error_handler');

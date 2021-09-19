@@ -1,4 +1,4 @@
-global.golos = require('golos-classic-js');
+global.golos = require('golos-lib-js');
 
 let { NODE_URL, CHAIN_ID } = Cypress.env();
 golos.config.set('websocket', NODE_URL);

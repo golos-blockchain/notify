@@ -1,7 +1,7 @@
 
 -- SCOPES = {
 --     'total': 0,
---     'feed': 1, # not used
+--     'feed': 1,
 --     'reward': 2, # not used
 --     'send': 3,
 --     'mention': 4,
@@ -13,7 +13,7 @@
 --     'message': 10,
 --     'receive': 11,
 --     'donate': 12,
---     'reserved2': 13,
+--     'fill_order': 13,
 --     'reserved3': 14,
 --     'reserved4': 15
 -- }

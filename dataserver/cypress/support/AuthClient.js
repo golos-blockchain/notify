@@ -1,4 +1,4 @@
-const { Signature, hash } = require('golos-classic-js/lib/auth/ecc');
+const { Signature, hash } = require('golos-lib-js/lib/auth/ecc');
 
 export default class AuthClient {
     static AUTH_HOST = 'http://localhost:8080';
@@ -54,9 +54,6 @@ export default class AuthClient {
         };
         var request = {...AuthClient.getRequestBase(),
             body: JSON.stringify(body),
-            headers: {
-                'X-Session': global.session,
-            },
         };
 
         var resp = await fetch(AuthClient.AUTH_HOST + '/api/login_account', request);
