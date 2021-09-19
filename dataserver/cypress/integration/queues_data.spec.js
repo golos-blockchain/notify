@@ -354,4 +354,63 @@ describe('queues - data tests', function () {
         expect(json.status).to.equal('ok');
         expect(json.tasks[0].scope).to.equal('comment_reply');
     })
+
+    it('feed', async function() {
+        global.session = global.sessionAcc2;
+        const subACC2 = await global.subscribe(ACC2, 'feed');
+
+        global.log('Transfer vesting to ACC2...')
+
+        await golos.broadcast.transferToVestingAsync(
+            ACC_ACTIVE,
+            ACC, ACC2, '100.000 GOLOS');
+
+        global.log('Follow ACC2 to ACC...')
+
+        await golos.broadcast.customJsonAsync(
+            ACC_POSTING,
+            [], [ACC2], 'follow',
+            JSON.stringify([
+                'follow',
+                {
+                    follower: ACC2,
+                    following: ACC,
+                    what: ['blog'],
+                }]));
+
+        global.log('Post by ACC...')
+
+        const permlink = `test-test-${global.random()}`;
+
+        await golos.broadcast.commentAsync(
+            ACC_POSTING,
+            '', 'test', ACC, permlink, 'Post', `Test`, '{"test":1}');
+
+        global.log('Take ACC2...')
+
+        global.session = global.sessionAcc2;
+
+        var request = {...getRequestBase(),
+            method: 'get',
+        };
+        var resp = await fetch(global.HOST + `/take/@${ACC2}/${subACC2}`, request);
+        var json = await resp.json();
+
+        expect(json.error).to.equal(undefined);
+        expect(json.status).to.equal('ok');
+        expect(json.tasks[0].scope).to.equal('feed');
+
+        global.log('Unfollow ACC2...')
+
+        await golos.broadcast.customJsonAsync(
+            ACC_POSTING,
+            [], [ACC2], 'follow',
+            JSON.stringify([
+                'follow',
+                {
+                    follower: ACC2,
+                    following: ACC,
+                    what: [],
+                }]));
+    })
 })

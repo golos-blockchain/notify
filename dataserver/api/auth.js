@@ -1,6 +1,6 @@
 const koaRouter = require('koa-router');
-const golos = require('golos-classic-js');
-const { Signature, hash, PublicKey } = require('golos-classic-js/lib/auth/ecc');
+const golos = require('golos-lib-js');
+const { Signature, hash, PublicKey } = require('golos-lib-js/lib/auth/ecc');
 const secureRandom = require('secure-random');
 const axios = require('axios');
 

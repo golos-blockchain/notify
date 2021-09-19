@@ -1,5 +1,5 @@
 const koaRouter = require('koa-router');
-const golos = require('golos-classic-js');
+const golos = require('golos-lib-js');
 const Tarantool = require('../tarantool');
 const { returnError, SCOPES } = require('../utils');
 const { GOLOS_CHECK_VALUE, GOLOS_CHECK_PARAM_ACCOUNT } = require('../offchain_validators');

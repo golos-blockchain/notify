@@ -1,4 +1,4 @@
-const { validateAccountName } = require('golos-classic-js/lib/utils');
+const { validateAccountName } = require('golos-lib-js/lib/utils');
 
 function GOLOS_CHECK_PARAM_ACCOUNT(op, field) {
     const res = validateAccountName(op[field]);
