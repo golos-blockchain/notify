@@ -22,8 +22,8 @@ services:
       NODE_URL: https://api-full.golos.id
       TARANTOOL_HOST: datastore
       SESSION_SECRET: exiKdyF+IwRIXJDmtGIl4vWUz4i3eVSISpfZoeYc0s4=
-      AUTH_HOST: https://auth.golos.today
-      SITE_DOMAIN: notify.golos.today
+      AUTH_HOST: https://golos.app
+      SITE_DOMAIN: notify.golos.app
     ports:
       - "8805:8805"
 
