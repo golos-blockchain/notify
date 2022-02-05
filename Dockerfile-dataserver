@@ -1,17 +1,17 @@
-FROM node:16.1
+FROM node:16.1 as build
 
 # For version in healthcheck
-RUN mkdir -p /.git
 COPY .git/ /.git/
 
-RUN mkdir -p /server
-WORKDIR /server
+WORKDIR /var/app
+COPY dataserver/ /var/app/
+RUN yarn install
+RUN yarn build-prod
 
-# Bundle app source
-COPY dataserver/ /server/
-WORKDIR /server
-RUN npm install
-RUN npm run build-prod
+FROM node:16.1 as production
+
+WORKDIR /var/app
+COPY --from=build /var/app /var/app
 
 EXPOSE 8805
-CMD [ "npm", "run", "prod" ]
+CMD [ "yarn", "run", "prod" ]
