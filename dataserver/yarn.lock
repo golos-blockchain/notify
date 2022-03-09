@@ -662,9 +662,9 @@ cookies@~0.8.0:
     keygrip "~1.1.0"
 
 core-js@^3.17.3:
-  version "3.21.0"
-  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.21.0.tgz#f479dbfc3dffb035a0827602dd056839a774aa71"
-  integrity sha512-YUdI3fFu4TF/2WykQ2xzSiTQdldLB4KVuL9WeAy5XONZYt5Cun/fpQvctoKbCgvPhmzADeesTk/j2Rdx77AcKQ==
+  version "3.21.1"
+  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.21.1.tgz#f2e0ddc1fc43da6f904706e8e955bc19d06a0d94"
+  integrity sha512-FRq5b/VMrWlrmCzwRrpDYNxyHP9BcAZC+xHJaqTgIE5091ZV1NTmyh0sGOg5XqpnHvR0svdy0sv1gWA1zmhxig==
 
 core-util-is@1.0.2:
   version "1.0.2"
@@ -1242,10 +1242,10 @@ global-dirs@^3.0.0:
   dependencies:
     ini "2.0.0"
 
-golos-lib-js@^0.9.24:
-  version "0.9.24"
-  resolved "https://registry.yarnpkg.com/golos-lib-js/-/golos-lib-js-0.9.24.tgz#826cf568098ae1cc4651f533440b1c264e725bbc"
-  integrity sha512-b2KSeVvHd/u8gFM0LaNehL5O92xTejbJXCzXF96YW/o2NNhljU4oEnA6TEl+SeSLxLBhLCvkhlfK6SyloaRl8Q==
+golos-lib-js@^0.9.25:
+  version "0.9.25"
+  resolved "https://registry.yarnpkg.com/golos-lib-js/-/golos-lib-js-0.9.25.tgz#352c12b829fa42e4dcd6ca3adaa564ba94b6d09e"
+  integrity sha512-yuxDQQ09UXDf2lpkH1Yzqq1V/poBgFpeVGA/TQ61ZorUtCoLOSISfn0LJm3fxCtPltE515DwQv3/4pjsFuAUPw==
   dependencies:
     assert "^2.0.0"
     bigi "^1.4.2"
@@ -3132,9 +3132,9 @@ write-file-atomic@^3.0.0:
     typedarray-to-buffer "^3.1.5"
 
 ws@^8.2.3:
-  version "8.4.2"
-  resolved "https://registry.yarnpkg.com/ws/-/ws-8.4.2.tgz#18e749868d8439f2268368829042894b6907aa0b"
-  integrity sha512-Kbk4Nxyq7/ZWqr/tarI9yIt/+iNNFOjBXEWgTb4ydaNHBNGgvf2QHbS9fdfsndfjFlFwEd4Al+mw83YkaD10ZA==
+  version "8.5.0"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.5.0.tgz#bfb4be96600757fe5382de12c670dab984a1ed4f"
+  integrity sha512-BWX0SWVgLPzYwF8lTzEy1egjhS4S4OEAHfsO8o65WOVsrnSRGaSiUaa9e0ggGlkMTtBlmOpEXiie9RUcBO86qg==
 
 xdg-basedir@^4.0.0:
   version "4.0.0"
