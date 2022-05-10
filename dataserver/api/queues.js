@@ -204,6 +204,7 @@ module.exports = function useQueuesApi(app) {
             }
             ctx.body = {
                 tasks: res.tasks,
+                __: Math.floor(Date.now() / 1000),
                 status: 'ok',
             };
         } catch (error) {

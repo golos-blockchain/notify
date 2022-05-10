@@ -121,4 +121,31 @@ module.exports = function useMsgsApi(app) {
             return;
         }
     });
+
+    // Very experimental method, do not rely on it
+    router.get('/msgs/get_inbox/@:account/:select_accounts?', async (ctx) => {
+        const { account, select_accounts } = ctx.params
+        const { offset, limit, unread_only } = ctx.query
+
+        try {
+            const result = await golos.api.getInboxAsync(account, {
+                select_accounts: select_accounts ? JSON.parse(select_accounts)  : [],
+                offset,
+                limit,
+                unread_only
+            })
+            for (let obj of result) {
+                obj.__time = Math.floor(+new Date(obj.create_date + 'Z') / 1000)
+            }
+            ctx.body = {
+                status: 'ok',
+                result
+            }
+        } catch (err) {
+            console.error('/msgs/get_inbox', err, account)
+            ctx.body = {
+                status: 'err',
+            }
+        }
+    })
 }
