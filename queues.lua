@@ -93,8 +93,10 @@ function queue_list_for_cleanup()
     return { queue_ids = queue_ids }
 end
 
-function queue_put(queue_id, scope, op_data, timestamp)
-    if box.space[queue_id] ~= nil then
+function queue_put(account, subscriber_id, scope, op_data, timestamp)
+    local q = box.space.queues:get{subscriber_id}
+    if q ~= nil then
+        local queue_id = queue_id(account, subscriber_id)
         box.space[queue_id]:auto_increment{{scope = scope, data = op_data, timestamp = timestamp}}
     end
 end

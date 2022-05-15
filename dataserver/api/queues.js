@@ -23,12 +23,11 @@ async function putToQueues(account, scope, opData, timestamp) {
     }
 
     for (const [acc, id] of queue_ids) {
-        const queue_id = make_queue_id(acc, id);
-
         await Tarantool.instance('tarantool').call(
-            'queue_put', queue_id, scope, opData, timestamp,
+            'queue_put', acc, id, scope, opData, timestamp,
         );
 
+        const queue_id = make_queue_id(acc, id)
         signal_fire(queue_id);
     }
 }
