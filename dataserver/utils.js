@@ -13,6 +13,7 @@ const SCOPES = [
 /* 11 */    'receive',
 /* 12 */    'donate',
 /* 13 */    'fill_order',
+/* 14 */    'donate_msgs',
 ];
 
 const returnError = (ctx, error) => {

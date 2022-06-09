@@ -14,6 +14,6 @@
 --     'receive': 11,
 --     'donate': 12,
 --     'fill_order': 13,
---     'reserved3': 14,
+--     'donate_msgs': 14,
 --     'reserved4': 15
 -- }

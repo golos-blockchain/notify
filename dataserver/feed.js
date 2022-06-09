@@ -142,17 +142,32 @@ async function processTransfer(op) {
 async function processDonate(op) {
     if (op.from == op.to)
         return;
-    console.log('donate', op.from, op.to);
+
+    let scope = 'donate'
+
+    const { target } = op.memo
+    if (target && target.from && target.to && target.nonce) {
+        scope = 'donate_msgs'
+    }
+
+    console.log(scope, op.from, op.to);
 
     await Tarantool.instance('tarantool').call('counter_add',
         op.to,
-        SCOPES.indexOf('donate'),
+        SCOPES.indexOf(scope),
     );
     await putToQueues(
         op.to,
-        'donate',
+        scope,
         op,
         op.timestamp_prev);
+    if (scope === 'donate_msgs') {
+        await putToQueues(
+            op.from,
+            scope,
+            op,
+            op.timestamp_prev)
+    }
 }
 
 async function processFillOrder(op) {
