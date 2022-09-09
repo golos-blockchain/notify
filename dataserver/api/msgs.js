@@ -5,6 +5,7 @@ const { returnError, SCOPES } = require('../utils');
 const { GOLOS_CHECK_VALUE, GOLOS_CHECK_PARAM_ACCOUNT } = require('../offchain_validators');
 const { signal_fire } = require('../signals');
 const { putToQueues } = require('./queues');
+const isBlocking = require('../isBlocking')
 
 class private_message_operation {
     constructor(obj) {
@@ -60,6 +61,8 @@ module.exports = function useMsgsApi(app) {
         const { from, to, nonce, from_memo_key, to_memo_key,
             checksum, update, encrypted_message, } = params;
 
+        let fromAcc, toAcc
+
         let op = null;
         try {
             op = new private_message_operation(params);
@@ -75,7 +78,8 @@ module.exports = function useMsgsApi(app) {
             GOLOS_CHECK_VALUE(accs.length === 2,
                 'Missing account to');
 
-            const [ fromAcc, toAcc ] = accs;
+            fromAcc = accs[0]
+            toAcc = accs[1]
 
             GOLOS_CHECK_VALUE(from_memo_key === fromAcc.memo_key,
                 'from_memo_key is not match with from account memo_key');
@@ -87,6 +91,19 @@ module.exports = function useMsgsApi(app) {
         }
 
         const now = new Date().toISOString().split('.')[0];
+
+        const blocking = await isBlocking(toAcc, fromAcc)
+        if (blocking) {
+            if (blocking === 1) {
+                console.error(`/msgs/send_offchain @${from} wants to bypass blacklist of @${to}`)
+            } else {
+                console.error(`/msgs/send_offchain @${from} wants to bypass do-not-bother preset of @${to}`)
+            }
+            ctx.body = {
+                status: 'ok',
+            }
+            return
+        }
 
         try {
             await putToQueues(
