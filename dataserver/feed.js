@@ -2,6 +2,7 @@ const golos = require('golos-lib-js');
 const Tarantool = require('./tarantool');
 const { SCOPES } = require('./utils');
 const { signal_fire } = require('./signals');
+const { getSubs, putEvent } = require('./api/subs')
 const { putToQueues, make_queue_id } = require('./api/queues');
 
 const processedPosts = {};
@@ -59,8 +60,9 @@ async function processComment(op) {
     if (!commentBody || commentBody.startsWith('@@ '))
         return;
 
+    let post
     try {
-        const post = await golos.api.getContentAsync(op.author, op.permlink);
+        post = await golos.api.getContentAsync(op.author, op.permlink);
         if (!post.author) {
             throw 'post not found';
         }
@@ -74,6 +76,38 @@ async function processComment(op) {
     if (processedPosts[pkey])
         return;
     processedPosts[pkey] = true;
+
+    if (post.parent_author) {
+        const urlParts = post.url && post.url.split('#')
+        if (!urlParts || !urlParts[1] || !urlParts[0]) {
+            console.error('wrong post detected: ' + post.url)
+            return
+        }
+        let [ nothing, tag, rootAuthor, rootPermlink ] = urlParts[0].split('/')
+        rootAuthor = rootAuthor.replace('@', '')
+
+        const id = rootAuthor + '|' + rootPermlink
+        let subs = await getSubs(id)
+        subs = subs[0]
+        const data = JSON.stringify({
+            author: op.author,
+            permlink: op.permlink,
+            hashlink: post.hashlink,
+            title: op.title,
+            body: op.body.substr(0, 500)
+        })
+        for (const sub of subs) {
+            const { account } = sub
+            if (op.author === account) {
+                continue
+            }
+            await Tarantool.instance('tarantool').call('counter_add',
+                account,
+                SCOPES.indexOf('subscriptions'),
+            )
+            await putEvent(account, id, data)
+        }
+    }
 }
 
 async function processCommentReply(op) {

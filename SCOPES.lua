@@ -8,7 +8,7 @@
 --     'follow': 5, # not used
 --     'vote': 6, # not used
 --     'comment_reply': 7,
---     'post_reply': 8, # not used, uses comment_reply
+--     'subscriptions': 8,
 --     'account_update': 9, # not used
 --     'message': 10,
 --     'receive': 11,

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build-prod": "./build-version.sh",
-    "start": "./run-dev.sh",
+    "dev": "./run-dev.sh",
     "prod": "node index.js",
     "test": "cypress open"
   },

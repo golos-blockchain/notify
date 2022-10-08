@@ -3,6 +3,7 @@ json = require('json')
 require 'counters'
 require 'queues'
 require 'locks'
+require 'subscriptions'
 require 'stats'
 require 'guid'
 require 'actions'
@@ -12,9 +13,9 @@ io.output():setvbuf("no")
 box.cfg {
     log_level = 5,
     listen = '0.0.0.0:3301',
-    slab_alloc_arena = 1.0,
+    memtx_memory = 1 * 1024*1024*1024,
     wal_dir    = "/var/lib/tarantool",
-    snap_dir   = "/var/lib/tarantool",
+    memtx_dir   = "/var/lib/tarantool",
     vinyl_dir = "/var/lib/tarantool"
 }
 
@@ -42,6 +43,30 @@ box.once('bootstrap', function()
 
     locks = box.schema.create_space('locks')
     locks:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
+
+    -- subs spaces
+
+    subs = box.schema.create_space('subs')
+    subs:create_index('primary', {
+        type = 'tree', parts = {1, 'unsigned'}
+    })
+    subs:create_index('by_subscriber_date', {
+        type = 'tree', parts = {2, 'STR', 5, 'unsigned'}, unique = false
+    })
+    subs:create_index('by_subscriber_events', {
+        type = 'tree', parts = {2, 'STR', 6, 'unsigned'}, unique = false
+    })
+    subs:create_index('by_entity_id_subscriber', {
+        type = 'tree', parts = {4, 'STR', 2, 'STR'}
+    })
+
+    events = box.schema.create_space('events')
+    events:create_index('primary', {
+        type = 'tree', parts = {1, 'unsigned'}
+    })
+    events:create_index('by_entity_id_subscriber', {
+        type = 'tree', parts = {4, 'STR', 2, 'STR'}, unique = false
+    })
 
     -- stats spaces
     pages = box.schema.create_space('pages')
