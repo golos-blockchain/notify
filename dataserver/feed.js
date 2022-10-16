@@ -2,6 +2,7 @@ const golos = require('golos-lib-js');
 const Tarantool = require('./tarantool');
 const { SCOPES } = require('./utils');
 const { signal_fire } = require('./signals');
+const { cleanupStats } = require('./api/stats')
 const { getSubs, putEvent } = require('./api/subs')
 const { putToQueues, make_queue_id } = require('./api/queues');
 
@@ -265,7 +266,11 @@ module.exports = function startFeeding() {
         event[1].timestamp_prev = eventmeta.timestamp;
         await processOp(event);
 
-        if (eventmeta.block % 10 === 0)
-            await cleanupQueues();
+        if (eventmeta.block % 10 === 0) {
+            await cleanupQueues()
+        }
+        if (eventmeta.block % 10 === 0) {
+            await cleanupStats()
+        }
     });
 }
