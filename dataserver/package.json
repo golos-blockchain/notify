@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build-prod": "./build-version.sh",
-    "start": "./run-dev.sh",
+    "dev": "./run-dev.sh",
     "prod": "node index.js",
     "test": "cypress open"
   },
@@ -22,6 +22,7 @@
     "koa-router": "^10.0.0",
     "koa-session-auth": "^1.0.3",
     "koa2-ratelimit": "^0.9.0",
+    "request-ip": "^3.3.0",
     "secure-random": "^1.1.2",
     "tarantool-driver": "^3.0.6"
   },

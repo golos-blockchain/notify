@@ -13,6 +13,8 @@ const useAuthApi = require('./api/auth');
 const useCountersApi = require('./api/counters');
 const useQueuesApi = require('./api/queues');
 const useMsgsApi = require('./api/msgs');
+const useStatsApi = require('./api/stats')
+const useSubsApi = require('./api/subs')
 
 const startFeeding = require('./feed');
 
@@ -39,6 +41,7 @@ router.get('/', async (ctx) => {
 app.use(livereload());
 app.use(cors({ credentials: true,
     expose: ['X-Session', 'Retry-After'],
+    methods: ['GET', 'PUT', 'HEAD', 'POST', 'DELETE', 'PATCH']
 }));
 app.keys = [SESSION_SECRET];
 app.use(session({
@@ -71,6 +74,8 @@ useAuthApi(app);
 useCountersApi(app);
 useQueuesApi(app);
 useMsgsApi(app);
+useStatsApi(app)
+useSubsApi(app)
 
 console.log('Connecting to', NODE_URL);
 

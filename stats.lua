@@ -1,70 +1,68 @@
-function store_ref(ref, page_id, ip, uid)
-  if not ref or ref == '' then return nil end
-  local pages = box.space.pages
-  local ref_page_id
-  local res = pages.index.secondary:select{ref}
-  if #res > 0 then
-    ref_page_id = res[1][1]
-    pages.index.secondary:update(ref, {{'+', 3, 1}})
-  else
-    local ref_page_res = pages:auto_increment{ref, 1}
-    ref_page_id = ref_page_res[1]
-  end
-  box.space.refs:auto_increment{ref_page_id, page_id, ip, uid, math.floor(fiber.time())}
-end
 
-function page_view(url, ip, uid, ref)
-    local user_id = uid
-    -- print('page_view: ', url, user_id, ref)
-    local pages = box.space.pages
-    local upv = box.space.unique_page_views
-    local res = pages.index.secondary:select{url}
-    local current_time = math.floor(fiber.time())
-    if #res > 0 then
-      local tuple = res[1]
-      -- print('tuple found', res)
-      local page_id = tuple[1]
-      local upv_res = upv:select{page_id, user_id}
-      -- print('upv_res', upv_res)
-      if #upv_res > 0 then
-          return {false, tuple[3]}
-      else
-          pages.index.secondary:update(url, {{'+', 3, 1}})
-          upv:insert{page_id, user_id, current_time}
-          upv:replace{page_id, ip, current_time}
-          store_ref(ref, page_id, ip, uid)
-          return {true, tuple[3] + 1}
-      end
+local MAX_VIEWS_BY_IP = 5
+
+function record_view(hash, ip)
+    local res = {}
+    local views = box.space.views.index.by_hash_ip:select({hash, ip})
+    if views[1] then
+        if views[1][5] >= MAX_VIEWS_BY_IP then
+            res.error = {
+                msg = 'limit_by_ip',
+                data = {
+                    current = views[1][5],
+                    max = MAX_VIEWS_BY_IP
+                }
+            }
+        else
+            box.space.views:update(views[1][1], {{'=', 4, fiber.clock64()}, {'+', 5, 1}})
+            res.updated = true
+        end
     else
-      res = pages:auto_increment{url, 1}
-      local page_id = res[1]
-      -- print('new url', res)
-      upv:insert{page_id, user_id, current_time}
-      upv:replace{page_id, ip, current_time}
-      store_ref(ref, page_id, ip, uid)
-      return {true, 1}
+        box.space.views:auto_increment{hash, ip, fiber.clock64(), 1}
+        res.added = true
     end
+
+    if res.added or res.updated then
+        local viewables = box.space.viewables.index.by_hash:select({hash})
+        if viewables[1] then
+            res.views = viewables[1][4] + 1
+            box.space.viewables:update(viewables[1][1], {{'=', 3, fiber.clock64()}, {'+', 4, 1}})
+        else
+            box.space.viewables:auto_increment{hash, fiber.clock64(), 1}
+            res.views = 1
+        end
+    end
+
+    return res
 end
 
-function get_page_refs(url)
-  local res = {}
-  local pages = box.space.pages
-  local refs = box.space.refs
-  local page_res = pages.index.secondary:select{url}
-  if #page_res == 0 then return nil end
-  local page_id = page_res[1][1]
-  local refs_res = refs.index.by_page:select{page_id}
-  for i, row in pairs(refs_res) do
-    local ref_page_id = row[2]
-    ref_page = pages:select{ref_page_id}
-    if #ref_page > 0 then
-      local page = ref_page[1][2]
-      if res[page] then
-        res[page] = res[page] + 1
-      else
-        res[page] = 1
-      end
+function get_viewable(hash)
+    local res = {}
+    res.hash = hash
+    res.updated = 0
+    res.views = 0
+    local viewables = box.space.viewables.index.by_hash:select({hash})
+    if viewables[1] then
+        local v = viewables[1]
+        res.updated = v[3]
+        res.views = v[4]
     end
-  end
-  return res
+    return res
+end
+
+local VIEWS_CLEANUP_INTERVAL_MSEC = 7*24*60*60*1000000
+
+function cleanup_stats()
+    local now = fiber.clock64()
+    local ves = box.space.viewables.index.by_date:select({1}, {iterator = 'GT', limit = 100})
+    for i,val in ipairs(ves) do
+        if (now - val[3]) > VIEWS_CLEANUP_INTERVAL_MSEC then
+            local views = box.space.views.index.by_hash_ip:select({val[2]})
+            for i,view in ipairs(views) do
+                box.space.views:delete(view[1])
+            end
+        else
+            break
+        end
+    end
 end

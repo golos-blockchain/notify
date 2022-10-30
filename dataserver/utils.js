@@ -7,7 +7,7 @@ const SCOPES = [
 /*  5 */    'follow', // not used
 /*  6 */    'vote', // not used
 /*  7 */    'comment_reply',
-/*  8 */    'post_reply', // not used, use comment_reply
+/*  8 */    'subscriptions',
 /*  9 */    'account_update', // not used
 /* 10 */    'message',
 /* 11 */    'receive',
@@ -19,6 +19,7 @@ const SCOPES = [
 const returnError = (ctx, error) => {
     ctx.status = 400;
     ctx.body = {status: 'err', error: error};
+    return error
 };
 
 const sleep = (msecs) => {
