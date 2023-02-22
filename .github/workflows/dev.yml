@@ -15,7 +15,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: docker/build-push-action@v4
         with:
-          context: .
           file: ./Dockerfile-datastore
           push: true
           tags: vizlex/golos-ui-test:datastore
@@ -29,7 +28,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: docker/build-push-action@v4
         with:
-          context: .
           file: ./Dockerfile-dataserver
           push: true
           tags: vizlex/golos-ui-test:dataserver
