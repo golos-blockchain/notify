@@ -3,8 +3,15 @@ local MAX_PER_ACCOUNT = 50
 function subscribe_it(account, id, hashlink)
     local res = {}
 
-    local subs = box.space.subs.index.by_subscriber_date:select({account}, {iterator = 'GE', limit = 100})
-    if #subs >= MAX_PER_ACCOUNT and subs[1][2] == account then
+    local subs = box.space.subs.index.by_subscriber_date:select({account}, {iterator = 'GE', limit = MAX_PER_ACCOUNT})
+    local total = 0
+    for i,sub in ipairs(subs) do
+        if sub[2] ~= account then
+            break
+        end
+        total = total + 1
+    end
+    if total == MAX_PER_ACCOUNT then
         res.deleted = subs[1]
         box.space.subs:delete(subs[1][1])
     end
