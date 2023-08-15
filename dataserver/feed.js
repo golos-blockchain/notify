@@ -205,6 +205,19 @@ async function processDonate(op) {
     }
 }
 
+async function processDelegateVS(op) {
+    console.log('--- delegate vesting shares:', op.delegatee, op.delegatee, op.vesting_shares)
+
+    const vs = parseFloat(op.vesting_shares)
+
+    if (vs === 0) return // if it is cancel
+
+    await Tarantool.instance('tarantool').call('counter_add',
+        op.delegatee,
+        SCOPES.indexOf('delegate_vs'),
+    )
+}
+
 async function processFillOrder(op) {
     console.log('--- fill_order: ', op.current_owner, op.open_owner);
     await Tarantool.instance('tarantool').call('counter_add',
@@ -249,6 +262,9 @@ async function processOp(op_data) {
 
     if (opType === 'donate')
         await processDonate(op);
+
+    if (opType === 'delegate_vesting_shares' || opType === 'delegate_vesting_shares_with_interest')
+        await processDelegateVS(op)
 
     if (opType === 'fill_order')
         await processFillOrder(op);

@@ -2,7 +2,7 @@
 -- SCOPES = {
 --     'total': 0,
 --     'feed': 1,
---     'reward': 2, # not used
+--     'delegate_vs': 2, # not used
 --     'send': 3,
 --     'mention': 4,
 --     'follow': 5, # not used
