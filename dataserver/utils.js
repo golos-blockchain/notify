@@ -1,7 +1,7 @@
 const SCOPES = [
 /*  0 */    'total',
 /*  1 */    'feed',
-/*  2 */    'reward', // not used
+/*  2 */    'delegate_vs', // not used
 /*  3 */    'send',
 /*  4 */    'mention',
 /*  5 */    'follow', // not used
