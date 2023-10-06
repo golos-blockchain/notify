@@ -15,5 +15,5 @@
 --     'donate': 12,
 --     'fill_order': 13,
 --     'donate_msgs': 14,
---     'reserved4': 15
+--     'reserved4': 15 # not used
 -- }
