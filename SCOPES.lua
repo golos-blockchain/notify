@@ -2,11 +2,11 @@
 -- SCOPES = {
 --     'total': 0,
 --     'feed': 1,
---     'delegate_vs': 2, # not used
+--     'delegate_vs': 2,
 --     'send': 3,
 --     'mention': 4,
---     'follow': 5, # not used
---     'vote': 6, # not used
+--     'new_sponsor': 5,
+--     'sponsor_inactive': 6,
 --     'comment_reply': 7,
 --     'subscriptions': 8,
 --     'account_update': 9, # not used
@@ -15,5 +15,5 @@
 --     'donate': 12,
 --     'fill_order': 13,
 --     'donate_msgs': 14,
---     'reserved4': 15
+--     'reserved4': 15 # not used
 -- }

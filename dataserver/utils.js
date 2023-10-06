@@ -4,8 +4,8 @@ const SCOPES = [
 /*  2 */    'delegate_vs', // not used
 /*  3 */    'send',
 /*  4 */    'mention',
-/*  5 */    'follow', // not used
-/*  6 */    'vote', // not used
+/*  5 */    'new_sponsor',
+/*  6 */    'sponsor_inactive',
 /*  7 */    'comment_reply',
 /*  8 */    'subscriptions',
 /*  9 */    'account_update', // not used

@@ -9,7 +9,7 @@ class Tarantool {
     constructor(key) {
         this.key = key;
         const host = process.env.TARANTOOL_HOST;
-        const port = 3301;
+        const port = 3302;
         const username = 'guest';
         const password = '';
         const connection = this.connection = new TarantoolDriver({host, port});

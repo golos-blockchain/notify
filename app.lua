@@ -10,7 +10,7 @@ io.output():setvbuf("no")
 
 box.cfg {
     log_level = 5,
-    listen = '0.0.0.0:3301',
+    listen = '0.0.0.0:3302',
     memtx_memory = 1 * 1024*1024*1024,
     wal_dir    = "/var/lib/tarantool",
     memtx_dir   = "/var/lib/tarantool",

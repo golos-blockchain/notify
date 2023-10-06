@@ -240,6 +240,24 @@ async function processFillOrder(op) {
         op.timestamp_prev);
 }
 
+async function processSubscriptionPayment(op) {
+    if (op.payment_type === 'first') {
+        console.log('--- new sponsor: ', op.subscriber, op.author, op.oid)
+        await Tarantool.instance('tarantool').call('counter_add',
+            op.author,
+            SCOPES.indexOf('new_sponsor'),
+        )
+    }
+}
+
+async function processSubscriptionInactive(op) {
+    console.log('--- subscription inactive: ', op.subscriber, op.author, op.oid)
+    await Tarantool.instance('tarantool').call('counter_add',
+        op.subscriber,
+        SCOPES.indexOf('sponsor_inactive'),
+    )
+}
+
 async function processOp(op_data) {
     let [ opType, op ] = op_data;
 
@@ -268,6 +286,12 @@ async function processOp(op_data) {
 
     if (opType === 'fill_order')
         await processFillOrder(op);
+
+    if (opType === 'subscription_payment')
+        await processSubscriptionPayment(op)
+
+    if (opType === 'subscription_inactive')
+        await processSubscriptionInactive(op)
 }
 
 module.exports = function startFeeding() {
