@@ -258,6 +258,31 @@ async function processSubscriptionInactive(op) {
     )
 }
 
+async function processNftIssue(op) {
+    console.log('--- nft issue: ', op.creator, op.to, op.token_id)
+    if (op.creator !== op.to)
+        await Tarantool.instance('tarantool').call('counter_add',
+            op.to,
+            SCOPES.indexOf('nft_receive'),
+        )
+}
+
+async function processNftTransfer(op) {
+    console.log('--- nft transfer: ', op.from, op.to, op.token_id)
+    await Tarantool.instance('tarantool').call('counter_add',
+        op.to,
+        SCOPES.indexOf('nft_receive'),
+    )
+}
+
+async function processNftTokenSold(op) {
+    console.log('--- nft token sold: ', op.seller, op.buyer, op.token_id)
+    await Tarantool.instance('tarantool').call('counter_add',
+        op.seller,
+        SCOPES.indexOf('nft_token_sold'),
+    )
+}
+
 async function processOp(op_data) {
     let [ opType, op ] = op_data;
 
@@ -292,6 +317,15 @@ async function processOp(op_data) {
 
     if (opType === 'subscription_inactive')
         await processSubscriptionInactive(op)
+
+    if (opType === 'nft_token')
+        await processNftIssue(op)
+
+    if (opType === 'nft_transfer')
+        await processNftTransfer(op)
+
+    if (opType === 'nft_token_sold')
+        await processNftTokenSold(op)
 }
 
 module.exports = function startFeeding() {
