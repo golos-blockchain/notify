@@ -1,6 +1,7 @@
 const koaRouter = require('koa-router');
 const Tarantool = require('../tarantool');
 const { returnError, SCOPES } = require('../utils');
+const { getArg, resData, resError } = require('../ws_utils')
 
 function toResArray(result) {
     if (!result || result.length < 1) return [];
@@ -16,6 +17,14 @@ function countersArrayToMap(data) {
     }, {});
 }
 
+const getCounters = async (account) => {
+    const res = await Tarantool.instance('tarantool').select('counters', 0, 1, 0, 'eq', account);
+    return countersArrayToMap(toResArray(res))
+}
+
+const makeCountersRead = async (account, scopes) => {
+}
+
 module.exports = function useCountersApi(app) {
     const router = new koaRouter();
     app.use(router.routes());
@@ -24,9 +33,9 @@ module.exports = function useCountersApi(app) {
         const { account } = ctx.params;
 
         try {
-            const res = await Tarantool.instance('tarantool').select('counters', 0, 1, 0, 'eq', account);
+            const counters = await getCounters(account)
             ctx.body = {
-                counters: countersArrayToMap(toResArray(res)),
+                counters,
                 status: 'ok',
             };
         } catch (error) {
@@ -82,4 +91,34 @@ module.exports = function useCountersApi(app) {
             status: 'ok',
         };
     });
+}
+
+module.exports.countersWsApi = {
+    'counters': async (args, ws) => {
+        const account = getArg(args, 'account')
+        if (!account) {
+            resError(ws, 400, 'No account argument')
+            return
+        }
+
+        try {
+            const counters = await getCounters(account)
+            resData(ws, {
+                counters,
+                status: 'ok',
+            })
+        } catch (error) {
+            resError(ws, 400, 'Tarantool error', {
+                counters: countersArrayToMap([])
+            })
+        }
+    },
+
+    'counters/read': async (args, ws) => {
+
+    },
+
+    'counters/subscribe': async (args, ws) => {
+
+    },
 }

@@ -17,6 +17,7 @@ const useStatsApi = require('./api/stats')
 const useSubsApi = require('./api/subs')
 
 const startFeeding = require('./feed');
+const { wsListen } = require('./ws');
 
 const NODE_URL = process.env.NODE_URL || 'https://api.golos.id';
 golos.config.set('websocket', NODE_URL);
@@ -80,5 +81,7 @@ useSubsApi(app)
 console.log('Connecting to', NODE_URL);
 
 app.listen(8805, () => console.log('running on port 8805'));
+
+wsListen(8806, '/ws', () => console.log('websocket running on port 8806, path is /ws'))
 
 startFeeding();
