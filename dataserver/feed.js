@@ -283,6 +283,14 @@ async function processNftTokenSold(op) {
     )
 }
 
+async function processReferral(op) {
+    console.log('--- referral: ', op.referrer, op.referral)
+    await Tarantool.instance('tarantool').call('counter_add',
+        op.referrer,
+        SCOPES.indexOf('referral'),
+    )
+}
+
 async function processOp(op_data) {
     let [ opType, op ] = op_data;
 
@@ -326,6 +334,9 @@ async function processOp(op_data) {
 
     if (opType === 'nft_token_sold')
         await processNftTokenSold(op)
+
+    if (opType === 'referral')
+        await processReferral(op)
 }
 
 module.exports = function startFeeding() {

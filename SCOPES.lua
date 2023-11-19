@@ -16,7 +16,7 @@
 --     'fill_order': 13,
 --     'donate_msgs': 14,
 --     'nft_receive': 15,
---     'reserved1': 16, # not used
+--     'referral': 16,
 --     'reserved2': 17, # not used
 --     'reserved3': 18, # not used
 --     'reserved4': 19, # not used
