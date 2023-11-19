@@ -15,7 +15,7 @@ const SCOPES = [
 /* 13 */    'fill_order',
 /* 14 */    'donate_msgs',
 /* 15 */    'nft_receive',
-/* 16 */    'reserved1',
+/* 16 */    'referral',
 /* 17 */    'reserved2',
 /* 18 */    'reserved3',
 /* 19 */    'reserved4',
