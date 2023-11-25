@@ -97,6 +97,13 @@ function queue_put(account, subscriber_id, scope, op_data, timestamp)
     local q = box.space.queues:get{subscriber_id}
     if q ~= nil then
         local queue_id = queue_id(account, subscriber_id)
+        if box.space[queue_id] == nil then
+            print('WARNING: queue_put detected what record present but no space: ')
+            print(q)
+            print(account)
+            print(q[2])
+            return
+        end
         box.space[queue_id]:auto_increment{{scope = scope, data = op_data, timestamp = timestamp}}
     end
 end
