@@ -48,6 +48,16 @@ module.exports = function useAuthApi(app) {
 
         ctx.session.a = account;
 
+        try {
+            await ctx.session._sessCtx.commit()
+            const xSession = ctx.response.get('X-Session')
+            global.session[xSession] = {
+                account
+            }
+        } catch (err) {
+            console.error('/login_account - WebSocket session failure', err)
+        }
+
         ctx.body = {
             status: 'ok'
         };
@@ -55,6 +65,16 @@ module.exports = function useAuthApi(app) {
 
     router.get('/logout_account', (ctx) => {
         const was_logged_in = !!ctx.session.a;
+
+        try {
+            if (was_logged_in) {
+                const xSession = ctx.request.get('X-Session')
+                delete global.session[xSession]
+            }
+        } catch (err) {
+            console.error('/logout_account - WebSocket session failure', err)
+        }
+
         ctx.session.a = null;
         ctx.body = {
             status: 'ok',

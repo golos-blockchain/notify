@@ -14,10 +14,16 @@ const wsListen = (port, path, onListen) => {
     })
 
     wss.on('connection', (ws, req) => {
+        ws.isAlive = true
+
         const forwardedFor = req.headers['x-forwarded-for']
         ws.remoteIp = forwardedFor ? forwardedFor.split(',')[0].trim() : req.socket.remoteAddress
 
         ws.on('error', console.error)
+
+        ws.on('pong', () => {
+            ws.isAlive = true
+        })
 
         ws.on('message', async (msg) => {
             let data
@@ -38,9 +44,33 @@ const wsListen = (port, path, onListen) => {
                 return
             }
 
-            await routes[data.api](data.args, ws)
-            return
+            try {
+                await routes[data.api]({
+                    id: data.id,
+                    args: data.args,
+                    ws
+                })
+            } catch (err) {
+                console.error('Internal ws error:', err)
+                resError(ws, 500, err ? err.message : 'Internal error')
+            }
         })
+    })
+
+    const pingInterval = setInterval(() => {
+        wss.clients.forEach((ws) => {
+            if (ws.isAlive === false) {
+                ws.isDead = true
+                return ws.terminate()
+            }
+
+            ws.isAlive = false
+            ws.ping()
+        })
+    }, 30000)
+
+    wss.on('close', () => {
+        clearInterval(pingInterval)
     })
 
     onListen()
