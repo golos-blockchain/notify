@@ -30,29 +30,31 @@ const wsListen = (port, path, onListen) => {
             try {
                 data = JSON.parse(msg)
             } catch (err) {
-                resError(ws, 400, 'Wrong JSON: ' + err.message)
+                resError({ ws }, 400, 'Wrong JSON: ' + err.message)
                 return
             }
 
+            const ctx = {
+                id: data.id,
+                args: data.args,
+                ws
+            }
+
             if (!data.api) {
-                resError(ws, 400, 'No API route specified in message')
+                resError(ctx, 400, 'No API route specified in message')
                 return
             }
 
             if (!routeKeys.includes(data.api)) {
-                resError(ws, 400, 'No such API route: ' + data.api)
+                resError(ctx, 400, 'No such API route: ' + data.api)
                 return
             }
 
             try {
-                await routes[data.api]({
-                    id: data.id,
-                    args: data.args,
-                    ws
-                })
+                await routes[data.api](ctx)
             } catch (err) {
                 console.error('Internal ws error:', err)
-                resError(ws, 500, err ? err.message : 'Internal error')
+                resError(ctx, 500, err ? err.message : 'Internal error')
             }
         })
     })

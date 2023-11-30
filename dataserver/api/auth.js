@@ -49,8 +49,11 @@ module.exports = function useAuthApi(app) {
         ctx.session.a = account;
 
         try {
-            await ctx.session._sessCtx.commit()
+            ctx.session.save()
+            await ctx.session.manuallyCommit()
+            ctx.session._requireSave = false
             const xSession = ctx.response.get('X-Session')
+
             global.session[xSession] = {
                 account
             }

@@ -53,7 +53,7 @@ const addCounter = async (account, scope) => {
         if (subs) {
             const counters = await getCounters(account)
 
-            for (const [ xSession, sub ] of subs) {
+            for (const [ xSession, sub ] of Object.entries(subs)) {
                 if (sub.ws && !sub.ws.isDead) {
                     resData({
                         id: null,
@@ -174,7 +174,7 @@ module.exports.countersWsApi = {
         const { account } = getAuthArgs(ctx)
         if (!account) return
 
-        const scopes = getArg(args, 'scopes')
+        const scopes = getArg(ctx, 'scopes')
         if (!scopes) {
             resError(ctx, 400, 'No scopes argument')
             return
