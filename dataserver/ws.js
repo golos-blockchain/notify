@@ -57,6 +57,10 @@ const wsListen = (port, path, onListen) => {
                 resError(ctx, 500, err ? err.message : 'Internal error')
             }
         })
+
+        ws.on('close', () => {
+            ws.isDead = true
+        })
     })
 
     const pingInterval = setInterval(() => {
@@ -72,6 +76,7 @@ const wsListen = (port, path, onListen) => {
     }, 30000)
 
     wss.on('close', () => {
+        console.log('clear WS alive check')
         clearInterval(pingInterval)
     })
 
