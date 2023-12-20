@@ -1,4 +1,5 @@
 fiber = require 'fiber'
+clock = require 'clock'
 json = require('json')
 require 'counters'
 require 'queues'
@@ -90,6 +91,8 @@ box.once('bootstrap', function()
         type = 'tree', parts = {4, 'unsigned'}, unique = false
     })
 end)
+
+migrate_subs()
 
 function send_json(req, table)
     local resp = req:render({text = json.encode(table)})

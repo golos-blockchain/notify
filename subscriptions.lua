@@ -1,5 +1,38 @@
 local MAX_PER_ACCOUNT = 50
 
+function now()
+    return math.floor(clock.time() * 1000)
+end
+
+function migrate_subs()
+    if box.space.subs_migrated ~= nil then
+        print('Subs already migrated.')
+        return
+    end
+
+    print('Migrating subs...')
+
+    local subs = box.space.subs.index.by_subscriber_date:select({}, {iterator = 'GE'})
+    local start_time = 1700000000000
+    local num = start_time
+    local acc_name = nil
+    for i,sub in ipairs(subs) do
+        local acc = sub[2]
+        if acc_name == nil then
+            acc_name = acc
+        elseif acc ~= acc_name then
+            acc_name = acc
+            num = start_time
+        end
+
+        box.space.subs:update(sub[1], {{'=', 5, num}})
+
+        num = num + 1
+    end
+
+    box.schema.create_space('subs_migrated')
+end
+
 function subscribe_it(account, id, hashlink)
     local res = {}
 
@@ -17,14 +50,14 @@ function subscribe_it(account, id, hashlink)
     end
 
     -- 1 - post replies. 1-500 are reserved for Golos, another can be used by 3rd party
-    local q = box.space.subs:auto_increment{account, 1, id, fiber.clock64(), 0, hashlink}
+    local q = box.space.subs:auto_increment{account, 1, id, now(), 0, hashlink}
     res.added = q[1]
     return res
 end
 
 function put_event(account, entity_id, data)
     -- 1 - comment. 1-500 are reserved for Golos, another can be used by 3rd party
-    local event = box.space.events:auto_increment{account, 1, entity_id, fiber.clock64(), data}
+    local event = box.space.events:auto_increment{account, 1, entity_id, now(), data}
 
     local subs = box.space.subs.index.by_entity_id_subscriber:select({entity_id, account})
     if #subs > 0 then
@@ -41,7 +74,7 @@ local function fill_sub(sub, data)
     sub.account = data[2]
     sub.type = 'post_replies'
     sub.entityId = data[4]
-    sub.createsMsec = data[5]
+    sub.createdMsec = data[5]
     sub.eventCount = data[6]
     sub.hashlink = data[7]
 end
