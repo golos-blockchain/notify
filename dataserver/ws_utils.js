@@ -1,4 +1,4 @@
-global.session = {}
+global.session = global.session || {}
 
 const getArg = (ctx, key) => {
     if (!ctx.args) return null
@@ -45,7 +45,7 @@ const getAuthArgs = (ctx) => {
         return {}
     }
     if (session.account !== account) {
-        resError(ctx, 403, 'Access denied - wrong account')
+        resError(ctx, 403, 'Access denied - wrong account', global.session)
         return {}
     }
 
