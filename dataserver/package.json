@@ -24,7 +24,8 @@
     "koa2-ratelimit": "^0.9.0",
     "request-ip": "^3.3.0",
     "secure-random": "^1.1.2",
-    "tarantool-driver": "^3.0.6"
+    "tarantool-driver": "^3.0.6",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "cypress": "^7.7.0",

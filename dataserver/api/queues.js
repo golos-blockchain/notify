@@ -7,6 +7,77 @@ function make_queue_id(account, subscriber_id) {
     return 'queue_' + account.split('-').join('_') + '_' + subscriber_id;
 }
 
+global.queueSubscribers = {}
+
+global.slowsCounter = 0
+
+const cleanQueueSubscribers = (maxCount = 50) => {
+    try {
+        let count = 0
+        for (const [ account, subs ] of Object.entries(global.queueSubscribers)) {
+            for (const [ xSession, sub ] of Object.entries(subs)) {
+                if (sub.ws.isDead) {
+                    delete subs[xSession]
+                    if (++count > maxCount) {
+                        return
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error('cleanQueueSubscribers', err)
+    }
+}
+
+async function subscribe(account, scopesStr) {
+    if (!scopesStr.length) {
+        throw new Error('No correct notification scopes')
+    }
+
+    let scopeIds = {}
+    for (let scope of scopesStr) {
+        const i = SCOPES.indexOf(scope)
+        if (i === -1) {
+            throw new Error(`Wrong notification scope - ${scope}`)
+        }
+        scopeIds[i] = true
+        if (i === 0) { // 'total'
+            scopeIds = { '0': true, }
+            break;
+        }
+    }
+
+    let subscriber_id = 0
+    try {
+        const start = new Date()
+
+        const res = await Tarantool.instance('tarantool').call('queue_subscribe', account, scopeIds)
+
+        const elapse = new Date() - start
+        if (elapse > 3000) {
+            console.warn(`PULSE-SLOW: queues @${account} ${elapse}`)
+            ++global.slowsCounter
+        }
+
+        subscriber_id = res[0][0]
+
+        return subscriber_id
+    } catch (error) {
+        throw new Error('Tarantool error: ' + error.message)
+    }
+}
+
+async function unsubscribe(account, subscriber_id) {
+    let was = true
+    try {
+        const res = await Tarantool.instance('tarantool').call('queue_unsubscribe', account, parseInt(subscriber_id))
+        was = res[0][0].was
+        return was
+    } catch (error) {
+        throw new Error('Tarantool error: ' + error.message)
+    }
+}
+
 async function putToQueues(account, scope, opData, timestamp) {
     scope = SCOPES.indexOf(scope)
 
@@ -36,15 +107,13 @@ module.exports = function useQueuesApi(app) {
     const router = new koaRouter();
     app.use(router.routes());
 
-    let slowsCounter = 0;
-
     router.get('/_stats', async (ctx) => {
         try {
             const res = await Tarantool.instance('tarantool').call('queue_stats');
             ctx.body = {
                 status: 'ok',
                 queues: res,
-                slowsCounter,
+                slowsCounter: global.slowsCounter,
             };
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /stats ${error.message}`);
@@ -53,65 +122,38 @@ module.exports = function useQueuesApi(app) {
     });
 
     router.get('/subscribe/@:account/:scopes', async (ctx) => {
-        const { account, scopes } = ctx.params;
+        const { account, scopes } = ctx.params
 
         if (!ctx.session.a) {
-            ctx.status = 403;
-            return returnError(ctx, 'Access denied - not authorized');
+            ctx.status = 403
+            return returnError(ctx, 'Access denied - not authorized')
         }
 
         if (account !== ctx.session.a) {
-            ctx.status = 403;
-            return returnError(ctx, 'Access denied - wrong account');
+            ctx.status = 403
+            return returnError(ctx, 'Access denied - wrong account')
         }
 
         let scopesStr = scopes.split(',');
 
-        if (!scopesStr.length) {
-            return returnError(ctx, 'No correct notification scopes');
-        }
-
-        let scopeIds = {};
-        for (let scope of scopesStr) {
-            const i = SCOPES.indexOf(scope);
-            if (i === -1) {
-                return returnError(ctx, `Wrong notification scope - ${scope}`);
-            }
-            scopeIds[i] = true;
-            if (i === 0) { // 'total'
-                scopeIds = { '0': true, };
-                break;
-            }
-        }
-
-        let subscriber_id = 0;
+        let subscriber_id
         try {
-            const start = new Date();
-
-            const res = await Tarantool.instance('tarantool').call('queue_subscribe', account, scopeIds);
-
-            const elapse = new Date() - start;
-            if (elapse > 3000) {
-                console.warn(`PULSE-SLOW: queues @${account} ${elapse}`);
-                ++slowsCounter;
-            }
-
-            subscriber_id = res[0][0];
+            subscriber_id = await subscribe(account, scopesStr)
         } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /subscribe @${account} ${error.message}`);
-            ctx.status = 400;
+            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /subscribe @${account} ${error.message}`)
+            ctx.status = 400
             ctx.body = {
                 subscriber_id: null,
                 status: 'err',
                 error: 'Tarantool error',
-            };
-            return;
+            }
+            return
         }
 
         ctx.body = {
             subscriber_id,
             status: 'ok',
-        };
+        }
     });
 
     router.get('/unsubscribe/@:account/:subscriber_id', async (ctx) => {
@@ -127,13 +169,12 @@ module.exports = function useQueuesApi(app) {
             return returnError(ctx, 'Access denied - wrong account');
         }
 
-        let was = true;
+        let was = true
         try {
-            const res = await Tarantool.instance('tarantool').call('queue_unsubscribe', account, parseInt(subscriber_id));
-            was = res[0][0].was;
+            was = await unsubscribe(account, parseInt(subscriber_id))
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /unsubscribe @${account} ${error.message}`);
-            return returnError(ctx, 'Tarantool error');
+            return returnError(ctx, 'Tarantool error')
         }
 
         signal_fire(make_queue_id(account, subscriber_id));
@@ -216,6 +257,95 @@ module.exports = function useQueuesApi(app) {
             };
         }
     });
+}
+
+module.exports.queuesWsApi = {
+    'queues/get': async (ctx) => {
+        resData(ctx, {
+            status: 'ok',
+        })
+    },
+
+    'queues/subscribe': async (ctx) => {
+        const { account, xSession } = getAuthArgs(ctx)
+        if (!account) return
+
+        cleanQueueSubscribers()
+
+        const scopesStr = getArg(ctx, 'scopes')
+        if (!scopesStr) {
+            resError(ctx, 400, 'No scopes argument')
+            return
+        }
+        if (!Array.isArray(scopesStr)) {
+            resError(ctx, 400, 'Scopes argument should be array')
+            return
+        }
+
+        global.queueSubscribers[account] = global.queueSubscribers[account] || {}
+        const subscriber = global.queueSubscribers[account][xSession]
+        if (subscriber) {
+            resData(ctx, {
+                status: 'ok',
+                subscriber_id: subscriber.subscriber_id,
+                already_subscribed: true
+            })
+            return
+        }
+
+        let subscriber_id
+        try {
+            subscriber_id = await subscribe(account, scopesStr)
+        } catch (error) {
+            console.error('queues/subscribe WS error', error.message)
+            resError(ctx, 400, 'Tarantool-step error', {
+                err_message: error.message
+            })
+            return
+        }
+
+        global.queueSubscribers[account][xSession] = { ws: ctx.ws, subscriber_id }
+
+        resData(ctx, {
+            status: 'ok',
+            already_subscribed: false,
+            subscriber_id
+        })
+    },
+
+    'queues/unsubscribe': async (ctx) => {
+        const { account, xSession } = getAuthArgs(ctx)
+        if (!account) return
+
+        const subscriber_id = getArg(ctx, 'subscriber_id')
+        if (!subscriber_id) {
+            resError(ctx, 400, 'No subscriber_id argument')
+            return
+        }
+
+        let was = false
+        const subs = global.queueSubscribers[account]
+        if (subs) {
+            if (subs[xSession]) {
+                delete subs[xSession]
+                was = true
+            }
+        }
+
+        try {
+            was = was || await unsubscribe(account, parseInt(subscriber_id))
+        } catch (error) {
+            console.error('queues/unsubscribe WS error', error.message)
+            resError(ctx, 400, 'Tarantool-step error', {
+                err_message: error.message
+            })
+        }
+
+        resData(ctx, {
+            status: 'ok',
+            was
+        })
+    }
 }
 
 module.exports.putToQueues = putToQueues;

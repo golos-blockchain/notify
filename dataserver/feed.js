@@ -4,6 +4,7 @@ const { SCOPES } = require('./utils');
 const { signal_fire } = require('./signals');
 const { cleanupStats } = require('./api/stats')
 const { getSubs, putEvent } = require('./api/subs')
+const { addCounter } = require('./api/counters');
 const { putToQueues, make_queue_id } = require('./api/queues');
 
 const processedPosts = {};
@@ -40,10 +41,10 @@ async function processMessage(op) {
         return;
     const data = opJson[1];
     console.log(opJson[0], data.from, data.to);
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         data.to,
         SCOPES.indexOf('message'),
-    );
+    )
     await putToQueues(
         data.from,
         'message',
@@ -102,7 +103,7 @@ async function processComment(op) {
             if (op.author === account) {
                 continue
             }
-            await Tarantool.instance('tarantool').call('counter_add',
+            await addCounter(
                 account,
                 SCOPES.indexOf('subscriptions'),
             )
@@ -112,10 +113,10 @@ async function processComment(op) {
 }
 
 async function processCommentReply(op) {
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.parent_author,
         SCOPES.indexOf('comment_reply'),
-    );
+    )
     await putToQueues(
         op.parent_author,
         'comment_reply',
@@ -125,10 +126,10 @@ async function processCommentReply(op) {
 
 async function processCommentMention(op) {
     console.log('--- mention: ', op.author, op.permlink, '@' + op.mentioned);
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.mentioned,
         SCOPES.indexOf('mention'),
-    );
+    )
     await putToQueues(
         op.mentioned,
         'mention',
@@ -138,10 +139,10 @@ async function processCommentMention(op) {
 
 async function processCommentFeed(op) {
     console.log('--- feed: ', op.author, op.permlink, '@' + op.follower);
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.follower,
         SCOPES.indexOf('feed'),
-    );
+    )
     await putToQueues(
         op.follower,
         'feed',
@@ -154,14 +155,14 @@ async function processTransfer(op) {
         return;
     console.log('transfer', op.from, op.to);
 
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.from,
         SCOPES.indexOf('send'),
-    );
-    await Tarantool.instance('tarantool').call('counter_add',
+    )
+    await addCounter(
         op.to,
         SCOPES.indexOf('receive'),
-    );
+    )
     await putToQueues(
         op.from,
         'send',
@@ -187,10 +188,10 @@ async function processDonate(op) {
 
     console.log(scope, op.from, op.to);
 
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.to,
         SCOPES.indexOf(scope),
-    );
+    )
     await putToQueues(
         op.to,
         scope,
@@ -212,7 +213,7 @@ async function processDelegateVS(op) {
 
     if (vs === 0) return // if it is cancel
 
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.delegatee,
         SCOPES.indexOf('delegate_vs'),
     )
@@ -220,14 +221,14 @@ async function processDelegateVS(op) {
 
 async function processFillOrder(op) {
     console.log('--- fill_order: ', op.current_owner, op.open_owner);
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.current_owner,
         SCOPES.indexOf('fill_order'),
-    );
-    await Tarantool.instance('tarantool').call('counter_add',
+    )
+    await addCounter(
         op.open_owner,
         SCOPES.indexOf('fill_order'),
-    );
+    )
     await putToQueues(
         op.current_owner,
         'fill_order',
@@ -243,7 +244,7 @@ async function processFillOrder(op) {
 async function processSubscriptionPayment(op) {
     if (op.payment_type === 'first') {
         console.log('--- new sponsor: ', op.subscriber, op.author, op.oid)
-        await Tarantool.instance('tarantool').call('counter_add',
+        await addCounter(
             op.author,
             SCOPES.indexOf('new_sponsor'),
         )
@@ -252,7 +253,7 @@ async function processSubscriptionPayment(op) {
 
 async function processSubscriptionInactive(op) {
     console.log('--- subscription inactive: ', op.subscriber, op.author, op.oid)
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.subscriber,
         SCOPES.indexOf('sponsor_inactive'),
     )
@@ -261,7 +262,7 @@ async function processSubscriptionInactive(op) {
 async function processNftIssue(op) {
     console.log('--- nft issue: ', op.creator, op.to, op.token_id)
     if (op.creator !== op.to)
-        await Tarantool.instance('tarantool').call('counter_add',
+        await addCounter(
             op.to,
             SCOPES.indexOf('nft_receive'),
         )
@@ -269,7 +270,7 @@ async function processNftIssue(op) {
 
 async function processNftTransfer(op) {
     console.log('--- nft transfer: ', op.from, op.to, op.token_id)
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.to,
         SCOPES.indexOf('nft_receive'),
     )
@@ -277,7 +278,7 @@ async function processNftTransfer(op) {
 
 async function processNftTokenSold(op) {
     console.log('--- nft token sold: ', op.seller, op.buyer, op.token_id)
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.seller,
         SCOPES.indexOf('nft_token_sold'),
     )
@@ -285,7 +286,7 @@ async function processNftTokenSold(op) {
 
 async function processReferral(op) {
     console.log('--- referral: ', op.referrer, op.referral)
-    await Tarantool.instance('tarantool').call('counter_add',
+    await addCounter(
         op.referrer,
         SCOPES.indexOf('referral'),
     )
