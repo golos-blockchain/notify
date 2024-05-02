@@ -26,5 +26,6 @@ services:
       SITE_DOMAIN: notify.golos.app
     ports:
       - "8805:8805"
+      - "8806:8806"
 
   # SESSION_SECRET can be generated via Node - crypto.randomBytes(32).toString('base64')
