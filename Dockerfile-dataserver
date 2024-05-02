@@ -1,4 +1,4 @@
-FROM node:16.1 as build
+FROM node:20.12.2 as build
 
 # For version in healthcheck
 # COPY .git/ /.git/
@@ -8,7 +8,7 @@ COPY dataserver/ /var/app/
 RUN yarn install
 RUN yarn build-prod
 
-FROM node:16.1-alpine
+FROM node:20.12.2-alpine
 
 WORKDIR /var/app
 COPY --from=build /var/app /var/app
