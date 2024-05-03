@@ -3,3 +3,4 @@
 dataserver/node_modules
 dataserver/cypress/screenshots
 dataserver/cypress/videos
+proxy/node_modules

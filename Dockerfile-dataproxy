@@ -1,0 +1,12 @@
+FROM node:20.12.2 as build
+
+# For version in healthcheck
+# COPY .git/ /.git/
+
+WORKDIR /var/app
+COPY proxy/ /var/app/
+RUN yarn install
+
+EXPOSE 8807
+EXPOSE 8808
+CMD [ "yarn", "run", "prod" ]

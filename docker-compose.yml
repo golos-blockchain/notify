@@ -29,3 +29,18 @@ services:
       - "8806:8806"
 
   # SESSION_SECRET can be generated via Node - crypto.randomBytes(32).toString('base64')
+
+  dataproxy:
+    image: golosblockchain/notify:dataproxy
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile-dataproxy
+    depends_on:
+      - dataserver
+    environment:
+      NOTIFY: http://194.87.209.212:8805
+      NOTIFY_WS: http://194.87.209.212:8806
+    ports:
+      - "8807:8807"
+      - "8808:8808"
