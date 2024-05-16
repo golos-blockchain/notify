@@ -7,6 +7,11 @@ WORKDIR /var/app
 COPY proxy/ /var/app/
 RUN yarn install
 
+FROM node:20.12.2-alpine
+
+WORKDIR /var/app
+COPY --from=build /var/app /var/app
+
 EXPOSE 8807
 EXPOSE 8808
 CMD [ "yarn", "run", "prod" ]
