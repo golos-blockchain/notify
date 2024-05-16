@@ -4,14 +4,9 @@ FROM node:20.12.2 as build
 # COPY .git/ /.git/
 
 WORKDIR /var/app
-COPY dataserver/ /var/app/
+COPY proxy/ /var/app/
 RUN yarn install
-RUN yarn build-prod
 
-FROM node:20.12.2-alpine
-
-WORKDIR /var/app
-COPY --from=build /var/app /var/app
-
-EXPOSE 8805
+EXPOSE 8807
+EXPOSE 8808
 CMD [ "yarn", "run", "prod" ]

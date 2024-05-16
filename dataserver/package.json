@@ -12,7 +12,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.21.4",
+    "axios": "^1.6.8",
     "fetch-cookie": "^1.0.0",
     "golos-lib-js": "^0.9.43",
     "koa": "^2.13.0",
@@ -21,14 +21,14 @@
     "koa-livereload": "^0.2.0",
     "koa-router": "^10.0.0",
     "koa-session-auth": "^1.0.3",
-    "koa2-ratelimit": "^0.9.0",
+    "koa2-ratelimit": "^1.1.3",
     "request-ip": "^3.3.0",
     "secure-random": "^1.1.2",
     "tarantool-driver": "^3.0.6",
     "ws": "^8.14.2"
   },
   "devDependencies": {
-    "cypress": "^7.7.0",
-    "nodemon": "^2.0.6"
+    "cypress": "^13.8.1",
+    "nodemon": "^3.1.0"
   }
 }

@@ -1,0 +1,14 @@
+{
+    "name": "proxy",
+    "license": "MIT",
+    "scripts": {
+        "dev": "nodemon index.js",
+        "prod": "node index.js"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.0"
+    },
+    "dependencies": {
+        "http-proxy": "^1.18.1"
+    }
+}
