@@ -1,6 +1,6 @@
 const golos = require('golos-lib-js');
 const Tarantool = require('./tarantool');
-const { SCOPES } = require('./utils');
+const { SCOPES, sleep } = require('./utils');
 const { signal_fire } = require('./signals');
 const { cleanupStats } = require('./api/stats')
 const { getSubs, putEvent } = require('./api/subs')
@@ -276,12 +276,50 @@ async function processNftTransfer(op) {
     )
 }
 
+async function processNftBuy(op) {
+    // conditions #1 and #2 are "offer/auction"
+    // cond #3 is "not auction"
+    if (op.token_id && op.name && op.order_id) {
+        console.log('--- nft offer: ', op.buyer, op.token_id, op.order_id, op.name)
+
+        let token
+        for (let r = 1; r <= 2; ++r) {
+            if (r > 1) await sleep(500);
+            try {
+                token = await golos.api.getNftTokensAsync({
+                    select_token_ids: [op.token_id]
+                })
+                token = token[0]
+                break
+            } catch (err) {
+                console.error('processNftBuy: cannot get NFT:', op.token_id, err)
+            }
+        }
+
+        if (!token) {
+            console.error('processNftBuy: cannot get NFT:', op.token_id)
+        }
+
+        await addCounter(
+            token.owner,
+            SCOPES.indexOf('nft_buy_offer'),
+        )
+    }
+}
+
 async function processNftTokenSold(op) {
-    console.log('--- nft token sold: ', op.seller, op.buyer, op.token_id)
-    await addCounter(
-        op.seller,
-        SCOPES.indexOf('nft_token_sold'),
-    )
+    console.log('--- nft token sold: ', op.actor, op.seller, op.buyer, op.token_id)
+    if (op.actor !== op.seller && op.actor) { // auction -> op.actor is empty
+        await addCounter(
+            op.seller,
+            SCOPES.indexOf('nft_token_sold'),
+        )
+    } else {
+        await addCounter(
+            op.buyer,
+            SCOPES.indexOf('nft_token_sold'),
+        )
+    }
 }
 
 async function processReferral(op) {
@@ -332,6 +370,9 @@ async function processOp(op_data) {
 
     if (opType === 'nft_transfer')
         await processNftTransfer(op)
+
+    if (opType === 'nft_buy')
+        await processNftBuy(op)
 
     if (opType === 'nft_token_sold')
         await processNftTokenSold(op)
