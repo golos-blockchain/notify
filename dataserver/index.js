@@ -12,6 +12,7 @@ const errorHandler = require('./error_handler');
 const useAuthApi = require('./api/auth');
 const useCountersApi = require('./api/counters');
 const useQueuesApi = require('./api/queues');
+const useGroupQueuesApi = require('./api/group_queues')
 const useMsgsApi = require('./api/msgs');
 const useStatsApi = require('./api/stats')
 const useSubsApi = require('./api/subs')
@@ -74,6 +75,7 @@ app.use(router.allowedMethods());
 useAuthApi(app);
 useCountersApi(app);
 useQueuesApi(app);
+useGroupQueuesApi(app)
 useMsgsApi(app);
 useStatsApi(app)
 useSubsApi(app)

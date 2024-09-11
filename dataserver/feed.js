@@ -6,6 +6,7 @@ const { cleanupStats } = require('./api/stats')
 const { getSubs, putEvent } = require('./api/subs')
 const { addCounter } = require('./api/counters');
 const { putToQueues, make_queue_id } = require('./api/queues');
+const { putToGroupQueues } = require('./api/group_queues')
 
 const processedPosts = {};
 
@@ -33,6 +34,20 @@ async function cleanupQueues() {
     console.log('cleanupQueues end');
 }
 
+const opGroup = (op) => {
+    let group = ''
+    if (!op) return group
+    const { extensions } = op
+    if (extensions) {
+        for (const ext of extensions) {
+            if (ext && ext[0] === 0) {
+                group = (ext[1] && ext[1].group) || group
+            }
+        }
+    }
+    return group
+}
+
 async function processMessage(op) {
     const opJson = JSON.parse(op.json);
     if (!Array.isArray(opJson))
@@ -40,21 +55,34 @@ async function processMessage(op) {
     if (!['private_message', 'private_delete_message', 'private_mark_message'].includes(opJson[0]))
         return;
     const data = opJson[1];
-    console.log(opJson[0], data.from, data.to);
-    await addCounter(
-        data.to,
-        SCOPES.indexOf('message'),
-    )
-    await putToQueues(
-        data.from,
-        'message',
-        opJson,
-        op.timestamp_prev);
-    await putToQueues(
-        data.to,
-        'message',
-        opJson,
-        op.timestamp_prev);
+    const group = opGroup(data)
+    console.log(opJson[0], group, data.from, data.to);
+    if (group) {
+        await putToGroupQueues(
+            group,
+            'message',
+            opJson,
+            op.timestamp_prev,
+        )
+        if (data.to) {
+            // TODO: inc to's counter
+        }
+    } else {
+        await addCounter(
+            data.to,
+            SCOPES.indexOf('message'),
+        )
+        await putToQueues(
+            data.from,
+            'message',
+            opJson,
+            op.timestamp_prev);
+        await putToQueues(
+            data.to,
+            'message',
+            opJson,
+            op.timestamp_prev);
+    }
 }
 
 async function processComment(op) {

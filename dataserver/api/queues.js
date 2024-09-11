@@ -95,7 +95,7 @@ async function putToQueues(account, scope, opData, timestamp) {
 
     for (const [acc, id] of queue_ids) {
         await Tarantool.instance('tarantool').call(
-            'queue_put', acc, id, scope, opData, timestamp,
+            'queue_put', id, scope, opData, timestamp,
         );
 
         const queue_id = make_queue_id(acc, id)

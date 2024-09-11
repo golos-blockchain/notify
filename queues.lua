@@ -16,9 +16,12 @@ end
 
 function queue_unsubscribe(account, subscriber_id)
     local queue_id = queue_id(account, subscriber_id)
+
     if box.space[queue_id] == nil then
         return { was = false }
     end
+
+    clear_queue_groups(subscriber_id)
 
     local q = box.space.queues:delete{subscriber_id}
     if q == nil then
@@ -93,19 +96,22 @@ function queue_list_for_cleanup()
     return { queue_ids = queue_ids }
 end
 
-function queue_put(account, subscriber_id, scope, op_data, timestamp)
+function queue_put(subscriber_id, scope, op_data, timestamp)
+    local res = {}
+    res.account = ''
     local q = box.space.queues:get{subscriber_id}
     if q ~= nil then
-        local queue_id = queue_id(account, subscriber_id)
+        res.account = q[2]
+        local queue_id = queue_id(res.account, subscriber_id)
         if box.space[queue_id] == nil then
             print('WARNING: queue_put detected what record present but no space: ')
             print(q)
-            print(account)
-            print(q[2])
-            return
+            print(res.account)
+            return res
         end
         box.space[queue_id]:auto_increment{{scope = scope, data = op_data, timestamp = timestamp}}
     end
+    return res
 end
 
 function queue_stats()
