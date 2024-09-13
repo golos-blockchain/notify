@@ -1016,10 +1016,10 @@ global-dirs@^3.0.0:
   dependencies:
     ini "2.0.0"
 
-golos-lib-js@^0.9.71:
-  version "0.9.71"
-  resolved "https://registry.yarnpkg.com/golos-lib-js/-/golos-lib-js-0.9.71.tgz#794bc6582a96f0e1a3bc4301e0c5dfac976a15bf"
-  integrity sha512-FkR7nuyMUXj+IT8ErTFhu6BsaEvPaLZAr72r5H+GUhqbD8q98tFfBURCKw0MGfiO9CEv0zdDG3daPTq2TThvxA==
+golos-lib-js@^0.9.75:
+  version "0.9.75"
+  resolved "https://registry.yarnpkg.com/golos-lib-js/-/golos-lib-js-0.9.75.tgz#51b2f05f6c536776d5a9681f2871d4c9d3449e37"
+  integrity sha512-0upRVfRnCJ+MD9cMCtVCA85eWpXKTF/zg8mjhQEpfuUELFRmNQ1maDuIY/meM3VSIVgkXaoqw1ci0CHjjfP55w==
   dependencies:
     abort-controller "^3.0.0"
     assert "^2.0.0"
