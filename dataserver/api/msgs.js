@@ -86,17 +86,16 @@ module.exports = function useMsgsApi(app) {
     app.use(router.routes());
 
     router.post('/msgs/send_offchain', async (ctx) => {
-        let params = ctx.request.body;
-        if (typeof(params) === 'string') params = JSON.parse(params);
-
-        const { from, to, nonce, from_memo_key, to_memo_key,
-            checksum, update, encrypted_message, } = params;
-
-        let fromAcc, toAcc
-
-        let op = null;
         try {
-            op = new private_message_operation(params);
+            let params = ctx.request.body;
+            if (typeof(params) === 'string') params = JSON.parse(params);
+
+            const { from, to, nonce, from_memo_key, to_memo_key,
+                checksum, update, encrypted_message, } = params;
+
+            let fromAcc, toAcc
+
+            let op = new private_message_operation(params);
 
             GOLOS_CHECK_VALUE(op.getAuthority() === ctx.session.a,
                 'Missing posting authority: ' + op.getAuthority());
@@ -148,84 +147,81 @@ module.exports = function useMsgsApi(app) {
                     GOLOS_CHECK_VALUE(to_memo_key === toAcc.memo_key,
                         'to_memo_key is not match with to account memo_key');
             }
-        } catch (error) {
-            return returnError(ctx, error.message);
-        }
 
-        const now = new Date().toISOString().split('.')[0];
+            const now = new Date().toISOString().split('.')[0];
 
-        if (toAcc) {
-            const blocking = await isBlocking(toAcc, fromAcc)
-            if (blocking) {
-                if (blocking === 1) {
-                    console.error(`/msgs/send_offchain @${from} wants to bypass blacklist of @${to}`)
-                } else {
-                    console.error(`/msgs/send_offchain @${from} wants to bypass do-not-bother preset of @${to}`)
+            if (toAcc) {
+                const blocking = await isBlocking(toAcc, fromAcc)
+                if (blocking) {
+                    if (blocking === 1) {
+                        console.error(`/msgs/send_offchain @${from} wants to bypass blacklist of @${to}`)
+                    } else {
+                        console.error(`/msgs/send_offchain @${from} wants to bypass do-not-bother preset of @${to}`)
+                    }
+                    ctx.body = {
+                        status: 'ok',
+                    }
+                    return
                 }
-                ctx.body = {
-                    status: 'ok',
+            }
+
+            if (op.group) {
+                try {
+                    console.log(op.group)
+                    await putToGroupQueues(
+                        op.group,
+                        'message',
+                        ['private_message', {...params, _offchain: true}],
+                        now
+                    )
+                    ctx.body = {
+                        status: 'ok',
+                    }
+                } catch (error) {
+                    console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain /${group} ${error.message}`)
+                    ctx.body = {
+                        status: 'err',
+                        error: 'Tarantool error when notifying group watchers',
+                    }
                 }
                 return
             }
-        }
 
-        if (op.group) {
             try {
-                console.log(op.group)
-                await putToGroupQueues(
-                    op.group,
+                await putToQueues(
+                    from,
                     'message',
                     ['private_message', {...params, _offchain: true}],
-                    now
-                )
-                ctx.body = {
-                    status: 'ok',
-                }
+                    now);
             } catch (error) {
-                console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain /${group} ${error.message}`)
+                console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain @${from} ${error.message}`);
                 ctx.body = {
                     status: 'err',
-                    error: 'Tarantool error when notifying group watchers',
-                }
+                    error: 'Tarantool error when notifying from',
+                };
+                return;
             }
-            return
-        }
 
-        try {
-            await putToQueues(
-                from,
-                'message',
-                ['private_message', {...params, _offchain: true}],
-                now);
-        } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain @${from} ${error.message}`);
-            ctx.body = {
-                status: 'err',
-                error: 'Tarantool error when notifying from',
-            };
-            return;
-        }
+            try {
+                await putToQueues(
+                    to,
+                    'message',
+                    ['private_message', {...params, _offchain: true}],
+                    now);
+            } catch (error) {
+                console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain @${from} ${error.message}`);
+                ctx.body = {
+                    status: 'err',
+                    error: 'Tarantool error when notifying to',
+                };
+                return;
+            }
 
-        try {
-            await putToQueues(
-                to,
-                'message',
-                ['private_message', {...params, _offchain: true}],
-                now);
             ctx.body = {
                 status: 'ok',
-            };
+            }
         } catch (error) {
-            console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain @${from} ${error.message}`);
-            ctx.body = {
-                status: 'err',
-                error: 'Tarantool error when notifying to',
-            };
-            return;
-        }
-
-        ctx.body = {
-            status: 'ok',
+            return returnError(ctx, error.message);
         }
     });
 

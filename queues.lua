@@ -50,21 +50,30 @@ local function take_tasks(queue_id)
     return tasks
 end
 
-function queue_take(account, subscriber_id, task_ids)
-    local tasks = {}
+function queue_ping(account, subscriber_id)
+    local qid = queue_id(account, subscriber_id)
+    if box.space[qid] == nil then
+        return false
+    end
 
     local found = box.space.queues:update(subscriber_id, {{'=', 4, fiber.clock64()}})
     if found == nil then
+        return false
+    end
+
+    return true
+end
+
+function queue_take(account, subscriber_id, task_ids)
+    local tasks = {}
+
+    if not queue_ping(account, subscriber_id) then
         return { tasks = tasks, error = 'No such queue' }
     end
 
-    local queue_id = queue_id(account, subscriber_id)
+    local qid = queue_id(account, subscriber_id)
 
-    if box.space[queue_id] == nil then
-        return { tasks = tasks, error = 'No such queue' }
-    end
-
-    tasks = take_tasks(queue_id)
+    tasks = take_tasks(qid)
     return { tasks = tasks }
 end
 

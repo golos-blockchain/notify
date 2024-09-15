@@ -2,6 +2,7 @@ const koaRouter = require('koa-router');
 const Tarantool = require('../tarantool');
 const { returnError, SCOPES, sleep } = require('../utils');
 const { signal_create, signal_fire, signal_check } = require('../signals');
+const { getArg, getAuthArgs, resData, resError } = require('../ws_utils')
 
 function make_queue_id(account, subscriber_id) {
     return 'queue_' + account.split('-').join('_') + '_' + subscriber_id;
@@ -78,7 +79,32 @@ async function unsubscribe(account, subscriber_id) {
     }
 }
 
+function sendSocketSubscriber(account, id, task) {
+    try {
+        const subs = global.queueSubscribers[account]
+        //console.log(subs)
+        if (subs) {
+            for (const [ xSession, sub ] of Object.entries(subs)) {
+                //console.log('WSSS', sub.subscriber_id, id)
+                if (sub.ws && !sub.ws.isDead && sub.subscriber_id === id) {
+                    //console.log('sending')
+                    resData({
+                        id: null,
+                        ws: sub.ws
+                    }, {
+                        event: 'queue',
+                        tasks: [task],
+                    })
+                }
+            }
+        }
+    } catch (err) {
+        console.error('sendSocketSubscriber WS error', err, account)
+    }
+}
+
 async function putToQueues(account, scope, opData, timestamp) {
+    const scopeStr = scope
     scope = SCOPES.indexOf(scope)
 
     const res = await Tarantool.instance('tarantool').call(
@@ -93,6 +119,12 @@ async function putToQueues(account, scope, opData, timestamp) {
         opData = [opData.type, opData];
     }
 
+    const task = {
+        scope: scopeStr,
+        data: opData,
+        timestamp,
+    }
+
     for (const [acc, id] of queue_ids) {
         await Tarantool.instance('tarantool').call(
             'queue_put', id, scope, opData, timestamp,
@@ -100,6 +132,8 @@ async function putToQueues(account, scope, opData, timestamp) {
 
         const queue_id = make_queue_id(acc, id)
         signal_fire(queue_id);
+
+        sendSocketSubscriber(acc, id, task)
     }
 }
 
@@ -272,15 +306,12 @@ module.exports.queuesWsApi = {
 
         cleanQueueSubscribers()
 
-        const scopesStr = getArg(ctx, 'scopes')
+        let scopesStr = getArg(ctx, 'scopes')
         if (!scopesStr) {
             resError(ctx, 400, 'No scopes argument')
             return
         }
-        if (!Array.isArray(scopesStr)) {
-            resError(ctx, 400, 'Scopes argument should be array')
-            return
-        }
+        scopesStr = scopesStr.split(',')
 
         global.queueSubscribers[account] = global.queueSubscribers[account] || {}
         const subscriber = global.queueSubscribers[account][xSession]
@@ -345,8 +376,9 @@ module.exports.queuesWsApi = {
             status: 'ok',
             was
         })
-    }
+    },
 }
 
+module.exports.sendSocketSubscriber = sendSocketSubscriber
 module.exports.putToQueues = putToQueues;
 module.exports.make_queue_id = make_queue_id;
