@@ -208,9 +208,6 @@ module.exports = function useMsgsApi(app) {
                     'message',
                     ['private_message', {...params, _offchain: true}],
                     now);
-                ctx.body = {
-                    status: 'ok',
-                };
             } catch (error) {
                 console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /msgs/send_offchain @${from} ${error.message}`);
                 ctx.body = {

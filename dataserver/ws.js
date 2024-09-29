@@ -2,9 +2,10 @@ const { WebSocketServer } = require('ws')
 
 const { getArg, resData, resError } = require('./ws_utils')
 const { countersWsApi } = require('./api/counters')
+const { queuesWsApi } = require('./api/queues')
 
 let routes = {}
-routes = {...routes, ...countersWsApi}
+routes = {...routes, ...countersWsApi, ...queuesWsApi}
 const routeKeys = Object.keys(routes)
 
 const wsListen = (port, path, onListen) => {
