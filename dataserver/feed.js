@@ -25,6 +25,21 @@ async function cleanupQueues() {
     for (const [acc, id] of queue_ids) {
         console.log('cleaning:', acc, id);
 
+        let hasWs = false
+        const subs = global.queueSubscribers[acc]
+        if (subs) {
+            for (const [ xSession, sub ] of Object.entries(subs)) {
+                if (sub.subscriber_id === id && sub.ws && !sub.ws.isDead) {
+                    hasWs = true
+                    break
+                }
+            }
+        }
+        if (hasWs) {
+            console.log('it has ws')
+            continue
+        }
+
         await Tarantool.instance('tarantool').call(
             'queue_unsubscribe', acc, id,
         );

@@ -372,7 +372,7 @@ module.exports.queuesWsApi = {
             status: 'ok',
             was
         })
-    }
+    },
 }
 
 module.exports.putToQueues = putToQueues;
