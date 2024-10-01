@@ -35,6 +35,11 @@ const wsListen = (port, path, onListen) => {
                 return
             }
 
+            if (data.ping) {
+                //console.log('WS Ping:', ws.remoteIp)
+                return
+            }
+
             const ctx = {
                 id: data.id,
                 args: data.args,
