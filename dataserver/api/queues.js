@@ -79,6 +79,30 @@ async function unsubscribe(account, subscriber_id) {
     }
 }
 
+function sendSocketSubscriber(account, id, task) {
+    try {
+        const subs = global.queueSubscribers[account]
+        //console.log(subs)
+        if (subs) {
+            for (const [ xSession, sub ] of Object.entries(subs)) {
+                //console.log('WSSS', sub.subscriber_id, id)
+                if (sub.ws && !sub.ws.isDead && sub.subscriber_id === id) {
+                    //console.log('sending')
+                    resData({
+                        id: null,
+                        ws: sub.ws
+                    }, {
+                        event: 'queue',
+                        tasks: [task],
+                    })
+                }
+            }
+        }
+    } catch (err) {
+        console.error('sendSocketSubscriber WS error', err, account)
+    }
+}
+
 async function putToQueues(account, scope, opData, timestamp) {
     const scopeStr = scope
     scope = SCOPES.indexOf(scope)
@@ -109,27 +133,7 @@ async function putToQueues(account, scope, opData, timestamp) {
         const queue_id = make_queue_id(acc, id)
         signal_fire(queue_id);
 
-        try {
-            const subs = global.queueSubscribers[acc]
-            console.log(subs)
-            if (subs) {
-                for (const [ xSession, sub ] of Object.entries(subs)) {
-                    console.log('WSSS', sub.subscriber_id, id)
-                    if (sub.ws && !sub.ws.isDead && sub.subscriber_id === id) {
-                        console.log('sending')
-                        resData({
-                            id: null,
-                            ws: sub.ws
-                        }, {
-                            event: 'queue',
-                            tasks: [task],
-                        })
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('putToQueues WS error', err, account)
-        }
+        sendSocketSubscriber(acc, id, task)
     }
 }
 
@@ -375,5 +379,6 @@ module.exports.queuesWsApi = {
     },
 }
 
+module.exports.sendSocketSubscriber = sendSocketSubscriber
 module.exports.putToQueues = putToQueues;
 module.exports.make_queue_id = make_queue_id;
