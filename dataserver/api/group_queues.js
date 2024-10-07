@@ -1,5 +1,7 @@
 const koaRouter = require('koa-router');
+const golos = require('golos-lib-js')
 const Tarantool = require('../tarantool');
+const { fillOpMiniAccounts } = require('../msg_utils')
 const { returnError } = require('../utils');
 const { make_queue_id, sendSocketSubscriber } = require('./queues');
 const { signal_fire } = require('../signals');
@@ -22,6 +24,12 @@ async function setGroups(account, subscriber_id, watchMap) {
 async function putToGroupQueues(group, scope, opData, timestamp) {
     let res
     try {
+        try {
+            await fillOpMiniAccounts(opData, group)
+        } catch (err) {
+            console.error('putToGroupQueues - mini account filling failure', err)
+        }
+
         const task = {
             scope,
             data: opData,
