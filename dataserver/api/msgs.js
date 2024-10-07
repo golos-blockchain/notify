@@ -28,7 +28,7 @@ class private_message_operation {
                     this.has_group = true
                     this.group = data.group
                     this.requester = data.requester || ''
-                    this.mentions = data.mentions || []
+                    this.mentions = data.mentions ? [...new Set(data.mentions)] : []
                 }
             }
         }
@@ -104,12 +104,19 @@ module.exports = function useMsgsApi(app) {
 
             const names = [from]
             if (to) names.push(to)
-            const accs = await golos.api.getAccountsAsync(names);
+            for (const men of op.mentions || []) {
+                names.push(men)
+            }
+            const accs = await golos.api.getAccountsAsync(names, { current: from })
             GOLOS_CHECK_VALUE(accs.length !== 0 && accs[0].name === from,
                 'Missing account from');
             if (to) {
-                GOLOS_CHECK_VALUE(accs.length === 2,
+                GOLOS_CHECK_VALUE(accs.length >= 2 && accs[1].name === to,
                     'Missing account to');
+            }
+            for (let i = 2; i < names.length; ++i) {
+                GOLOS_CHECK_VALUE(accs[i] && accs[i].name === names[i],
+                    'Missing account @' + names[i] + ' (mentions')
             }
 
             fromAcc = accs[0]
@@ -122,11 +129,8 @@ module.exports = function useMsgsApi(app) {
                 GOLOS_CHECK_VALUE(to_memo_key === emptyPublicKey,
                     'Memo keys should be empty for groups')
 
-                const reqMems = []
                 const auth = op.getAuthority()
-                if (auth !== from) {
-                    reqMems.push(auth)
-                }
+                const reqMems = [auth]
                 let pgo = await golos.api.getGroupsAsync({
                     start_group: op.group,
                     limit: 1,
@@ -134,10 +138,23 @@ module.exports = function useMsgsApi(app) {
                         accounts: reqMems
                     },
                 })
-                GOLOS_CHECK_VALUE(pgo[0] && pgo[0].name === op.group,
+                pgo = pgo[0]
+                GOLOS_CHECK_VALUE(pgo && pgo.name === op.group,
                     'Missing group')
-                if (auth !== from) {
-                    console.log(pgo)
+                const { owner, privacy, member_list } = pgo
+                const member = member_list && member_list.find(mem => mem.account === auth)
+                const isModer = owner === auth || (member && member.member_type === 'moder')
+                if (privacy !== 'public_group') {
+                    const isMember = isModer || (member && member.member_type === 'member')
+                    GOLOS_CHECK_VALUE(isMember,
+                        'You should be member of the group.')
+                } else {
+                    const isBanned = member && member.member_type === 'banned'
+                    GOLOS_CHECK_VALUE(!isBanned,
+                        'You are banned.')
+                }
+                if (auth !== op.from) {
+                    GOLOS_CHECK_VALUE(isModer, 'You should be moderator.')
                 }
             } else {
                 GOLOS_CHECK_VALUE(from_memo_key === fromAcc.memo_key,
@@ -150,13 +167,13 @@ module.exports = function useMsgsApi(app) {
 
             const now = new Date().toISOString().split('.')[0];
 
-            if (toAcc) {
-                const blocking = await isBlocking(toAcc, fromAcc)
+            for (let i = 1; i < accs.length; ++i) {
+                const blocking = await isBlocking(accs[i], fromAcc)
                 if (blocking) {
                     if (blocking === 1) {
-                        console.error(`/msgs/send_offchain @${from} wants to bypass blacklist of @${to}`)
+                        console.error(`/msgs/send_offchain @${from} wants to bypass blacklist of @${accs[i].name}`)
                     } else {
-                        console.error(`/msgs/send_offchain @${from} wants to bypass do-not-bother preset of @${to}`)
+                        console.error(`/msgs/send_offchain @${from} wants to bypass do-not-bother preset of @${accs[i].name}`)
                     }
                     ctx.body = {
                         status: 'ok',

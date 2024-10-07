@@ -1,7 +1,10 @@
 const koaRouter = require('koa-router');
+const golos = require('golos-lib-js')
 const Tarantool = require('../tarantool');
-const { returnError } = require('../utils');
-const { make_queue_id, sendSocketSubscriber } = require('./queues');
+const { fillOpMiniAccounts, opGroup } = require('../msg_utils')
+const { returnError, SCOPES } = require('../utils');
+const { addCounter } = require('./counters');
+const { make_queue_id, sendSocketSubscriber, putToQueues } = require('./queues');
 const { signal_fire } = require('../signals');
 const { getArg, getAuthArgs, resData, resError } = require('../ws_utils')
 
@@ -19,7 +22,7 @@ async function setGroups(account, subscriber_id, watchMap) {
     }
 }
 
-async function putToGroupQueues(group, scope, opData, timestamp) {
+async function putToGroupQueues(group, scope, opData, timestamp, excludeAccs = []) {
     let res
     try {
         const task = {
@@ -43,6 +46,10 @@ async function putToGroupQueues(group, scope, opData, timestamp) {
                 put = put[0][0]
                 const { account } = put
 
+                if (excludeAccs.includes(account)) {
+                    continue
+                }
+
                 const queue_id = make_queue_id(account, id)
                 signal_fire(queue_id)
 
@@ -57,6 +64,52 @@ async function putToGroupQueues(group, scope, opData, timestamp) {
         console.error('putToGroupQueues', error)
     }
     return res
+}
+
+async function putToMsgGroupQueues(group, opData, timestamp) {
+    try {
+        await fillOpMiniAccounts(opData, group)
+    } catch (err) {
+        console.error('putToMsgGroupQueues - mini account filling failure', err)
+    }
+
+    let excludeAccs = []
+    const data = opData[1]
+    if (data.to) {
+        await putToQueues(
+            data.to,
+            'message',
+            opData,
+            timestamp)
+        await addCounter(
+            data.to,
+            SCOPES.indexOf('message'),
+        )
+        excludeAccs.push(data.to)
+    }
+    const { mentions } = opGroup(data)
+    for (const men of mentions) {
+        if (excludeAccs.includes(men)) {
+            continue
+        }
+        await addCounter(
+            men,
+            SCOPES.indexOf('message'),
+        )
+        await putToQueues(
+            men,
+            'message',
+            opData,
+            timestamp)
+        excludeAccs.push(men)
+    }
+    await putToGroupQueues(
+        group,
+        'message',
+        opData,
+        timestamp,
+        excludeAccs,
+    )
 }
 
 module.exports = function useGroupQueuesApi(app) {
@@ -176,3 +229,4 @@ module.exports.groupQueuesWsApi = {
 }
 
 module.exports.putToGroupQueues = putToGroupQueues
+module.exports.putToMsgGroupQueues = putToMsgGroupQueues

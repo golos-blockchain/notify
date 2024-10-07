@@ -1,14 +1,17 @@
 const golos = require('golos-lib-js');
 const Tarantool = require('./tarantool');
+const { opGroup } = require('./msg_utils')
 const { SCOPES, sleep } = require('./utils');
 const { signal_fire } = require('./signals');
 const { cleanupStats } = require('./api/stats')
 const { getSubs, putEvent } = require('./api/subs')
 const { addCounter } = require('./api/counters');
 const { putToQueues, make_queue_id } = require('./api/queues');
-const { putToGroupQueues } = require('./api/group_queues')
+const { putToMsgGroupQueues } = require('./api/group_queues')
 
 const processedPosts = {};
+
+const MIN_MODERS_TO_NOT_BOTHER_GROUP_OWNER = 3
 
 function getPostKey(op) {
     return op.author + '/' + op.permlink;
@@ -49,39 +52,79 @@ async function cleanupQueues() {
     console.log('cleanupQueues end');
 }
 
-const opGroup = (op) => {
-    let group = ''
-    if (!op) return group
-    const { extensions } = op
-    if (extensions) {
-        for (const ext of extensions) {
-            if (ext && ext[0] === 0) {
-                group = (ext[1] && ext[1].group) || group
+async function processGroupMember(op) {
+    const opJson = JSON.parse(op.json)
+    const data = opJson[1]
+    const { name, requester, member, member_type } = data
+    if (member_type === 'pending') {
+        let members = []
+        try {
+            members = await golos.api.getGroupMembersAsync({
+                group: name,
+                member_types: ['moder'],
+                limit: 10,
+            })
+        } catch (err) {
+            console.error('Error get group moders:', name, err)
+        }
+        let informed = 0
+        for (const mem of members) {
+            await addCounter(
+                mem.account,
+                SCOPES.indexOf('join_request'),
+            )
+            ++informed
+        }
+        if (informed < MIN_MODERS_TO_NOT_BOTHER_GROUP_OWNER) {
+            let group
+            try {
+                group = await golos.api.getGroupsAsync({
+                    start_group: name,
+                    limit: 1,
+                })
+                group = group[0]
+            } catch (err) {
+                console.error('Error get group:', name, err)
+            }
+            if (group) {
+                await addCounter(
+                    group.owner,
+                    SCOPES.indexOf('join_request'),
+                )
+                ++informed
             }
         }
+        console.log('group join', name, informed)
+    } else if ((member_type === 'member' || member_type === 'moder')
+            && requester !== member) {
+        console.log('group member', member)
+        await addCounter(
+            member,
+            SCOPES.indexOf('group_member'),
+        )
     }
-    return group
 }
 
 async function processMessage(op) {
     const opJson = JSON.parse(op.json);
     if (!Array.isArray(opJson))
         return;
-    if (!['private_message', 'private_delete_message', 'private_mark_message'].includes(opJson[0]))
+    if (!['private_message', 'private_delete_message', 'private_mark_message',
+        'private_group_member'].includes(opJson[0]))
         return;
-    const data = opJson[1];
-    const group = opGroup(data)
+    if (opJson[0] === 'private_group_member') {
+        await processGroupMember(op)
+        return
+    }
+    const data = opJson[1]
+    const { group } = opGroup(data)
     console.log(opJson[0], group, data.from, data.to);
     if (group) {
-        await putToGroupQueues(
+        await putToMsgGroupQueues(
             group,
-            'message',
             opJson,
             op.timestamp_prev,
         )
-        if (data.to) {
-            // TODO: inc to's counter
-        }
     } else {
         await addCounter(
             data.to,
@@ -225,7 +268,7 @@ async function processDonate(op) {
     let scope = 'donate'
 
     const { target } = op.memo
-    if (target && target.from && target.to && target.nonce) {
+    if (target && target.from && (target.to || target.group) && target.nonce) {
         scope = 'donate_msgs'
     }
 

@@ -1,5 +1,6 @@
 const koaRouter = require('koa-router');
 const Tarantool = require('../tarantool');
+const { fillOpMiniAccounts } = require('../msg_utils')
 const { returnError, SCOPES, sleep } = require('../utils');
 const { signal_create, signal_fire, signal_check } = require('../signals');
 const { getArg, getAuthArgs, resData, resError } = require('../ws_utils')
@@ -117,6 +118,12 @@ async function putToQueues(account, scope, opData, timestamp) {
     // if operation is not custom_json
     if (!opData[1]) {
         opData = [opData.type, opData];
+    }
+
+    try {
+        await fillOpMiniAccounts(opData)
+    } catch (err) {
+        console.error('putToQueues - mini account filling failure', err)
     }
 
     const task = {
