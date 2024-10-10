@@ -10,6 +10,8 @@ const { putToGroupQueues } = require('./api/group_queues')
 
 const processedPosts = {};
 
+const MIN_MODERS_TO_NOT_BOTHER_GROUP_OWNER = 3
+
 function getPostKey(op) {
     return op.author + '/' + op.permlink;
 }
@@ -63,13 +65,71 @@ const opGroup = (op) => {
     return group
 }
 
+async function processGroupMember(op) {
+    const opJson = JSON.parse(op.json)
+    const data = opJson[1]
+    const { name, requester, member, member_type } = data
+    if (member_type === 'pending') {
+        let members = []
+        try {
+            members = await golos.api.getGroupMembersAsync({
+                group: name,
+                member_types: ['moder'],
+                limit: 10,
+            })
+        } catch (err) {
+            console.error('Error get group moders:', name, err)
+        }
+        let informed = 0
+        for (const mem of members) {
+            await addCounter(
+                mem.account,
+                SCOPES.indexOf('join_request'),
+            )
+            ++informed
+        }
+        if (informed < MIN_MODERS_TO_NOT_BOTHER_GROUP_OWNER) {
+            let group
+            try {
+                group = await golos.api.getGroupsAsync({
+                    start_group: name,
+                    limit: 1,
+                })
+                group = group[0]
+            } catch (err) {
+                console.error('Error get group:', name, err)
+            }
+            if (group) {
+                await addCounter(
+                    group.owner,
+                    SCOPES.indexOf('join_request'),
+                )
+                ++informed
+            }
+        }
+        console.log('group join', name, informed)
+    } else if ((member_type === 'member' || member_type === 'moder')
+            && requester !== member) {
+        console.log('group member', member)
+        await addCounter(
+            member,
+            SCOPES.indexOf('group_member'),
+        )
+    }
+}
+
 async function processMessage(op) {
     const opJson = JSON.parse(op.json);
     if (!Array.isArray(opJson))
         return;
-    if (!['private_message', 'private_delete_message', 'private_mark_message'].includes(opJson[0]))
+    if (!['private_message', 'private_delete_message', 'private_mark_message',
+        'private_group_member'].includes(opJson[0]))
         return;
-    const data = opJson[1];
+    if (opJson[0] === 'private_group_member') {
+        await processGroupMember(op)
+        return
+    }
+    const data = opJson[1]
     const group = opGroup(data)
     console.log(opJson[0], group, data.from, data.to);
     if (group) {

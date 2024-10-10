@@ -18,8 +18,8 @@
 --     'nft_receive': 15,
 --     'referral': 16,
 --     'nft_buy_offer': 17,
---     'reserved3': 18, # not used
---     'reserved4': 19, # not used
+--     'join_request': 18,
+--     'group_member': 19,
 --     'reserved5': 20, # not used
 --     'reserved6': 21, # not used
 --     'reserved7': 22, # not used
