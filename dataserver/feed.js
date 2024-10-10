@@ -225,7 +225,7 @@ async function processDonate(op) {
     let scope = 'donate'
 
     const { target } = op.memo
-    if (target && target.from && target.to && target.nonce) {
+    if (target && target.from && (target.to || target.group) && target.nonce) {
         scope = 'donate_msgs'
     }
 
