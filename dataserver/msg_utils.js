@@ -46,6 +46,23 @@ const fillOpMiniAccounts = async (opData, group) => {
     return opData
 }
 
+const opGroup = (op) => {
+    let group = ''
+    let mentions = []
+    if (!op) return group
+    const { extensions } = op
+    if (extensions) {
+        for (const ext of extensions) {
+            if (ext && ext[0] === 0) {
+                group = (ext[1] && ext[1].group) || group
+                mentions = (ext[1] && ext[1].mentions) || mentions
+            }
+        }
+    }
+    return { group, mentions }
+}
+
 module.exports = {
-    fillOpMiniAccounts
+    fillOpMiniAccounts,
+    opGroup,
 }
