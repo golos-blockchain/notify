@@ -6,6 +6,7 @@ require 'queues'
 require 'locks'
 require 'stats'
 require 'subscriptions'
+require 'group_queues'
 
 io.output():setvbuf("no")
 
@@ -93,6 +94,7 @@ box.once('bootstrap', function()
 end)
 
 migrate_subs()
+migrate_group_queues()
 
 function send_json(req, table)
     local resp = req:render({text = json.encode(table)})

@@ -17,9 +17,9 @@
 --     'donate_msgs': 14,
 --     'nft_receive': 15,
 --     'referral': 16,
---     'reserved2': 17, # not used
---     'reserved3': 18, # not used
---     'reserved4': 19, # not used
+--     'nft_buy_offer': 17,
+--     'join_request': 18,
+--     'group_member': 19,
 --     'reserved5': 20, # not used
 --     'reserved6': 21, # not used
 --     'reserved7': 22, # not used

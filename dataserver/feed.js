@@ -1,13 +1,17 @@
 const golos = require('golos-lib-js');
 const Tarantool = require('./tarantool');
-const { SCOPES } = require('./utils');
+const { opGroup } = require('./msg_utils')
+const { SCOPES, sleep } = require('./utils');
 const { signal_fire } = require('./signals');
 const { cleanupStats } = require('./api/stats')
 const { getSubs, putEvent } = require('./api/subs')
 const { addCounter } = require('./api/counters');
 const { putToQueues, make_queue_id } = require('./api/queues');
+const { putToMsgGroupQueues } = require('./api/group_queues')
 
 const processedPosts = {};
+
+const MIN_MODERS_TO_NOT_BOTHER_GROUP_OWNER = 3
 
 function getPostKey(op) {
     return op.author + '/' + op.permlink;
@@ -24,6 +28,21 @@ async function cleanupQueues() {
     for (const [acc, id] of queue_ids) {
         console.log('cleaning:', acc, id);
 
+        let hasWs = false
+        const subs = global.queueSubscribers[acc]
+        if (subs) {
+            for (const [ xSession, sub ] of Object.entries(subs)) {
+                if (sub.subscriber_id === id && sub.ws && !sub.ws.isDead) {
+                    hasWs = true
+                    break
+                }
+            }
+        }
+        if (hasWs) {
+            console.log('it has ws')
+            continue
+        }
+
         await Tarantool.instance('tarantool').call(
             'queue_unsubscribe', acc, id,
         );
@@ -33,28 +52,95 @@ async function cleanupQueues() {
     console.log('cleanupQueues end');
 }
 
+async function processGroupMember(op) {
+    const opJson = JSON.parse(op.json)
+    const data = opJson[1]
+    const { name, requester, member, member_type } = data
+    if (member_type === 'pending') {
+        let members = []
+        try {
+            members = await golos.api.getGroupMembersAsync({
+                group: name,
+                member_types: ['moder'],
+                limit: 10,
+            })
+        } catch (err) {
+            console.error('Error get group moders:', name, err)
+        }
+        let informed = 0
+        for (const mem of members) {
+            await addCounter(
+                mem.account,
+                SCOPES.indexOf('join_request'),
+            )
+            ++informed
+        }
+        if (informed < MIN_MODERS_TO_NOT_BOTHER_GROUP_OWNER) {
+            let group
+            try {
+                group = await golos.api.getGroupsAsync({
+                    start_group: name,
+                    limit: 1,
+                })
+                group = group[0]
+            } catch (err) {
+                console.error('Error get group:', name, err)
+            }
+            if (group) {
+                await addCounter(
+                    group.owner,
+                    SCOPES.indexOf('join_request'),
+                )
+                ++informed
+            }
+        }
+        console.log('group join', name, informed)
+    } else if ((member_type === 'member' || member_type === 'moder')
+            && requester !== member) {
+        console.log('group member', member)
+        await addCounter(
+            member,
+            SCOPES.indexOf('group_member'),
+        )
+    }
+}
+
 async function processMessage(op) {
     const opJson = JSON.parse(op.json);
     if (!Array.isArray(opJson))
         return;
-    if (!['private_message', 'private_delete_message', 'private_mark_message'].includes(opJson[0]))
+    if (!['private_message', 'private_delete_message', 'private_mark_message',
+        'private_group_member'].includes(opJson[0]))
         return;
-    const data = opJson[1];
-    console.log(opJson[0], data.from, data.to);
-    await addCounter(
-        data.to,
-        SCOPES.indexOf('message'),
-    )
-    await putToQueues(
-        data.from,
-        'message',
-        opJson,
-        op.timestamp_prev);
-    await putToQueues(
-        data.to,
-        'message',
-        opJson,
-        op.timestamp_prev);
+    if (opJson[0] === 'private_group_member') {
+        await processGroupMember(op)
+        return
+    }
+    const data = opJson[1]
+    const { group } = opGroup(data)
+    console.log(opJson[0], group, data.from, data.to);
+    if (group) {
+        await putToMsgGroupQueues(
+            group,
+            opJson,
+            op.timestamp_prev,
+        )
+    } else {
+        await addCounter(
+            data.to,
+            SCOPES.indexOf('message'),
+        )
+        await putToQueues(
+            data.from,
+            'message',
+            opJson,
+            op.timestamp_prev);
+        await putToQueues(
+            data.to,
+            'message',
+            opJson,
+            op.timestamp_prev);
+    }
 }
 
 async function processComment(op) {
@@ -182,7 +268,7 @@ async function processDonate(op) {
     let scope = 'donate'
 
     const { target } = op.memo
-    if (target && target.from && target.to && target.nonce) {
+    if (target && target.from && (target.to || target.group) && target.nonce) {
         scope = 'donate_msgs'
     }
 
@@ -276,12 +362,50 @@ async function processNftTransfer(op) {
     )
 }
 
+async function processNftBuy(op) {
+    // conditions #1 and #2 are "offer/auction"
+    // cond #3 is "not auction"
+    if (op.token_id && op.name && op.order_id) {
+        console.log('--- nft offer: ', op.buyer, op.token_id, op.order_id, op.name)
+
+        let token
+        for (let r = 1; r <= 2; ++r) {
+            if (r > 1) await sleep(500);
+            try {
+                token = await golos.api.getNftTokensAsync({
+                    select_token_ids: [op.token_id]
+                })
+                token = token[0]
+                break
+            } catch (err) {
+                console.error('processNftBuy: cannot get NFT:', op.token_id, err)
+            }
+        }
+
+        if (!token) {
+            console.error('processNftBuy: cannot get NFT:', op.token_id)
+        }
+
+        await addCounter(
+            token.owner,
+            SCOPES.indexOf('nft_buy_offer'),
+        )
+    }
+}
+
 async function processNftTokenSold(op) {
-    console.log('--- nft token sold: ', op.seller, op.buyer, op.token_id)
-    await addCounter(
-        op.seller,
-        SCOPES.indexOf('nft_token_sold'),
-    )
+    console.log('--- nft token sold: ', op.actor, op.seller, op.buyer, op.token_id)
+    if (op.actor !== op.seller && op.actor) { // auction -> op.actor is empty
+        await addCounter(
+            op.seller,
+            SCOPES.indexOf('nft_token_sold'),
+        )
+    } else {
+        await addCounter(
+            op.buyer,
+            SCOPES.indexOf('nft_token_sold'),
+        )
+    }
 }
 
 async function processReferral(op) {
@@ -332,6 +456,9 @@ async function processOp(op_data) {
 
     if (opType === 'nft_transfer')
         await processNftTransfer(op)
+
+    if (opType === 'nft_buy')
+        await processNftBuy(op)
 
     if (opType === 'nft_token_sold')
         await processNftTokenSold(op)

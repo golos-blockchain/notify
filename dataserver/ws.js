@@ -2,9 +2,11 @@ const { WebSocketServer } = require('ws')
 
 const { getArg, resData, resError } = require('./ws_utils')
 const { countersWsApi } = require('./api/counters')
+const { queuesWsApi } = require('./api/queues')
+const { groupQueuesWsApi } = require('./api/group_queues')
 
 let routes = {}
-routes = {...routes, ...countersWsApi}
+routes = {...routes, ...countersWsApi, ...queuesWsApi, ...groupQueuesWsApi}
 const routeKeys = Object.keys(routes)
 
 const wsListen = (port, path, onListen) => {
@@ -31,6 +33,11 @@ const wsListen = (port, path, onListen) => {
                 data = JSON.parse(msg)
             } catch (err) {
                 resError({ ws }, 400, 'Wrong JSON: ' + err.message)
+                return
+            }
+
+            if (data.ping) {
+                //console.log('WS Ping:', ws.remoteIp)
                 return
             }
 
