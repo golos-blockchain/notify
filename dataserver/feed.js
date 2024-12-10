@@ -59,11 +59,11 @@ async function processGroupMember(op) {
     if (member_type === 'pending') {
         let members = []
         try {
-            members = await golos.api.getGroupMembersAsync({
+            members = (await golos.api.getGroupMembersAsync({
                 group: name,
                 member_types: ['moder'],
                 limit: 10,
-            })
+            })).members
         } catch (err) {
             console.error('Error get group moders:', name, err)
         }
@@ -78,10 +78,10 @@ async function processGroupMember(op) {
         if (informed < MIN_MODERS_TO_NOT_BOTHER_GROUP_OWNER) {
             let group
             try {
-                group = await golos.api.getGroupsAsync({
+                group = (await golos.api.getGroupsAsync({
                     start_group: name,
                     limit: 1,
-                })
+                })).groups
                 group = group[0]
             } catch (err) {
                 console.error('Error get group:', name, err)
