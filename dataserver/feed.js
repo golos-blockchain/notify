@@ -71,7 +71,7 @@ async function processGroupMember(op) {
         for (const mem of members) {
             await addCounter(
                 mem.account,
-                SCOPES.indexOf('join_request'),
+                SCOPES.indexOf('join_request_mod'),
             )
             ++informed
         }
@@ -89,7 +89,7 @@ async function processGroupMember(op) {
             if (group) {
                 await addCounter(
                     group.owner,
-                    SCOPES.indexOf('join_request'),
+                    SCOPES.indexOf('join_request_own'),
                 )
                 ++informed
             }
@@ -98,9 +98,16 @@ async function processGroupMember(op) {
     } else if ((member_type === 'member' || member_type === 'moder')
             && requester !== member) {
         console.log('group member', member)
+        if (member_type === 'moder') {
+            await addCounter(
+                member,
+                SCOPES.indexOf('group_member_mod'),
+            )
+            return
+        }
         await addCounter(
             member,
-            SCOPES.indexOf('group_member'),
+            SCOPES.indexOf('group_member_mem'),
         )
     }
 }
