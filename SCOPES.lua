@@ -18,12 +18,12 @@
 --     'nft_receive': 15,
 --     'referral': 16,
 --     'nft_buy_offer': 17,
---     'join_request': 18,
---     'group_member': 19,
---     'reserved5': 20, # not used
---     'reserved6': 21, # not used
---     'reserved7': 22, # not used
---     'reserved8': 23, # not used
+--     'join_request_own': 18,
+--     'join_request_mod': 19,
+--     'group_member_mod': 20,
+--     'group_member_mem': 21,
+--     'reserved7': 22,
+--     'reserved8': 23,
 --     'reserved9': 24, # not used
 --     'reserved10': 25 # not used
 -- }

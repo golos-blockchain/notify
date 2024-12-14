@@ -194,7 +194,7 @@ module.exports.groupQueuesWsApi = {
                 resError(ctx, 400, 'object id <= 128')
                 return
             }
-            if (data) {
+            if (!data) {
                 resError(ctx, 400, '"' + o + '" object should have data')
                 return
             }

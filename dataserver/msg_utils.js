@@ -28,12 +28,12 @@ const fillOpMiniAccounts = async (opData, group) => {
             }
         }
         if (group) {
-            let mems = await golos.api.getGroupMembersAsync({
+            let mems = (await golos.api.getGroupMembersAsync({
                 group,
                 start_member: op.from,
                 limit: 1,
                 accounts: true,
-            })
+            })).members
             if (mems && mems[0]) {
                 op.from_account = mems[0].account_data
             } else {

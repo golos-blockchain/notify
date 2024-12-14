@@ -131,16 +131,17 @@ module.exports = function useMsgsApi(app) {
 
                 const auth = op.getAuthority()
                 const reqMems = [auth]
-                let pgo = await golos.api.getGroupsAsync({
+                let pgo = (await golos.api.getGroupsAsync({
                     start_group: op.group,
                     limit: 1,
                     with_members: {
                         accounts: reqMems
                     },
-                })
+                })).groups
                 pgo = pgo[0]
-                GOLOS_CHECK_VALUE(pgo && pgo.name === op.group,
-                    'Missing group')
+                GOLOS_CHECK_VALUE(pgo, 'Missing group (empty result)')
+                GOLOS_CHECK_VALUE(pgo.name === op.group, `Missing group (${pgo.name} !== ${op.group})`)
+
                 const { owner, privacy, member_list } = pgo
                 const member = member_list && member_list.find(mem => mem.account === auth)
                 const isModer = owner === auth || (member && member.member_type === 'moder')

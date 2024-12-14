@@ -18,7 +18,7 @@ function getPostKey(op) {
 }
 
 async function cleanupQueues() {
-    console.log('cleanupQueues');
+    console.log('cleanupQueues (just update it 4)');
     const res = await Tarantool.instance('tarantool').call(
         'queue_list_for_cleanup');
     if (!res[0][0]) return;
@@ -59,11 +59,11 @@ async function processGroupMember(op) {
     if (member_type === 'pending') {
         let members = []
         try {
-            members = await golos.api.getGroupMembersAsync({
+            members = (await golos.api.getGroupMembersAsync({
                 group: name,
                 member_types: ['moder'],
                 limit: 10,
-            })
+            })).members
         } catch (err) {
             console.error('Error get group moders:', name, err)
         }
@@ -71,17 +71,17 @@ async function processGroupMember(op) {
         for (const mem of members) {
             await addCounter(
                 mem.account,
-                SCOPES.indexOf('join_request'),
+                SCOPES.indexOf('join_request_mod'),
             )
             ++informed
         }
         if (informed < MIN_MODERS_TO_NOT_BOTHER_GROUP_OWNER) {
             let group
             try {
-                group = await golos.api.getGroupsAsync({
+                group = (await golos.api.getGroupsAsync({
                     start_group: name,
                     limit: 1,
-                })
+                })).groups
                 group = group[0]
             } catch (err) {
                 console.error('Error get group:', name, err)
@@ -89,7 +89,7 @@ async function processGroupMember(op) {
             if (group) {
                 await addCounter(
                     group.owner,
-                    SCOPES.indexOf('join_request'),
+                    SCOPES.indexOf('join_request_own'),
                 )
                 ++informed
             }
@@ -98,9 +98,16 @@ async function processGroupMember(op) {
     } else if ((member_type === 'member' || member_type === 'moder')
             && requester !== member) {
         console.log('group member', member)
+        if (member_type === 'moder') {
+            await addCounter(
+                member,
+                SCOPES.indexOf('group_member_mod'),
+            )
+            return
+        }
         await addCounter(
             member,
-            SCOPES.indexOf('group_member'),
+            SCOPES.indexOf('group_member_mem'),
         )
     }
 }
