@@ -18,7 +18,7 @@ function getPostKey(op) {
 }
 
 async function cleanupQueues() {
-    console.log('cleanupQueues (just update it 2)');
+    console.log('cleanupQueues (just update it 3)');
     const res = await Tarantool.instance('tarantool').call(
         'queue_list_for_cleanup');
     if (!res[0][0]) return;
