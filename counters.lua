@@ -1,4 +1,4 @@
-require 'table_utils'
+require 'misc_utils'
 
 row_len = 26
 

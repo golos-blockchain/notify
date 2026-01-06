@@ -1,0 +1,282 @@
+const koaRouter = require('koa-router')
+const admin = require('firebase-admin')
+const config = require('config')
+
+const { fireApps, pushToFirebase } = require('../firebase')
+const Tarantool = require('../tarantool')
+const { returnError, SCOPES } = require('../utils')
+
+async function registerToken(account, app, token, scopesStr) {
+    if (!scopesStr.length) {
+        throw new Error('No correct notification scopes')
+    }
+
+    if (!fireApps[app]) {
+        throw new Error('Wrong firebase app: ' + app)
+    }
+
+    let scopeIds = {}
+    for (let scope of scopesStr) {
+        const i = SCOPES.indexOf(scope)
+        if (i === -1) {
+            throw new Error(`Wrong notification scope - ${scope}`)
+        }
+        scopeIds[i] = true
+        if (i === 0) { // 'total'
+            scopeIds = { '0': true, }
+            break;
+        }
+    }
+
+    let res
+    try {
+        res = await Tarantool.instance('tarantool').call('register_token',
+            account, app, token, scopeIds)
+
+        res = res[0][0]
+
+        return res
+    } catch (error) {
+        throw new Error('Tarantool error: ' + error.message)
+    }
+}
+
+async function unregisterToken(account, token) {
+    let res
+    try {
+        res = await Tarantool.instance('tarantool').call('unregister_token',
+            account, token)
+
+        res = res[0][0]
+
+        return res
+    } catch (error) {
+        throw new Error('Tarantool error: ' + error.message)
+    }
+}
+
+async function cleanupFirebase(lifeTime = undefined) {
+    if (lifeTime) {
+        console.log('cleanupFirebase, lifeTime =', lifeTime)
+    } else {
+        console.log('cleanupFirebase')
+    }
+    let res = await Tarantool.instance('tarantool').call('cleanup_tokens', lifeTime || false)
+    res = res[0][0]
+    console.log('cleanupFirebase end, removed:', res.removed)
+}
+
+async function listTokens(account, scope) {
+    let res = await Tarantool.instance('tarantool').call('list_tokens', account, scope)
+    res = res[0][0]
+    const { tokens } = res
+    return tokens[0] ? tokens : []
+}
+
+async function putToCloud(account, scope, opData, timestamp) {
+    try {
+        if (!opData[1]) { // if not custom_json, unify it
+            opData = [opData.type, opData]
+        }
+
+        const scopeI = SCOPES.indexOf(scope)
+        const tokens = await listTokens(account, scopeI)
+        for (const obj of tokens) {
+            const { id, token, app } = obj
+            try {
+                await pushToFirebase(app, token, opData, account, scope)
+            } catch (err) {
+                if (config.has('cloud_push.log')) {
+                    console.warn('Cannot sent Firebase push:', account, app, token, err)
+                }
+                await Tarantool.instance('tarantool').call('delete_token', id, token)
+                continue 
+            }
+            try {
+                await Tarantool.instance('tarantool').call('update_token', id)
+            } catch (err) {}
+        }
+    } catch (err) {
+        console.error('CLOUD ERROR:', 'putToCloud', err)
+    }
+}
+
+module.exports = function useFirebaseApi(app) {
+    const router = new koaRouter()
+    app.use(router.routes())
+
+    router.get('/firebase', async (ctx) => {
+        ctx.body = {
+            apps: Object.keys(fireApps),
+        }
+    })
+
+    router.get('/firebase/debug/:token/send', async (ctx) => {
+        if (process.env.NODE_ENV !== 'development') {
+            ctx.body = { error: '403' }
+            return;
+        }
+
+        const { token } = ctx.params
+
+        const op = {
+            type: 'private_message',
+            from: 'lex',
+            to: 'xel',
+        }
+
+        try {
+            await pushToFirebase('msg_android', token, op, 'xel', 'message')
+            ctx.body = {
+                token
+            }
+        } catch (error) {
+            console.error(error);
+            ctx.body = {
+                token,
+                error: error.toString()
+            }
+        }
+    })
+
+    router.post('/firebase/register/:app/:token/:scopes', async (ctx) => {
+        if (!ctx.session.a) {
+            ctx.status = 403
+            return returnError(ctx, 'Access denied - not authorized')
+        }
+
+        const account = ctx.session.a
+
+        const { app, token, scopes } = ctx.params
+        if (!token) {
+            ctx.status = 400
+            return returnError(ctx, 'Wrong token parameter')
+        }
+
+        const scopesStr = scopes.split(',')
+
+        let result
+        try {
+            result = await registerToken(account, app, token, scopesStr)
+        } catch (error) {
+            console.error(`ERRORLOG /firebase/register`, `@${account}`, token, error)
+            ctx.status = 400
+            ctx.body = {
+                result: null,
+                status: 'err',
+                error: error?.message || error,
+            }
+            return
+        }
+
+        ctx.body = {
+            result,
+            status: 'ok',
+        }
+    })
+
+    router.post('/firebase/unregister/:token', async (ctx) => {
+        if (!ctx.session.a) {
+            ctx.status = 403
+            return returnError(ctx, 'Access denied - not authorized')
+        }
+
+        const account = ctx.session.a
+
+        const { token } = ctx.params
+        if (!token) {
+            ctx.status = 400
+            return returnError(ctx, 'Wrong token parameter')
+        }
+
+        let result
+        try {
+            result = await unregisterToken(account, token)
+        } catch (error) {
+            console.error(`ERRORLOG /firebase/unregister`, `@${account}`, token, error)
+            ctx.status = 400
+            ctx.body = {
+                result: null,
+                status: 'err',
+                error: error?.message || error,
+            }
+            return
+        }
+
+        ctx.body = {
+            result,
+            status: 'ok',
+        }
+    })
+}
+
+module.exports.firebaseWsApi = {
+    'firebase/register': async (ctx) => {
+        const { account, } = getAuthArgs(ctx)
+        if (!account) return
+
+        const app = getArg(ctx, 'app')
+        if (!app) {
+            resError(ctx, 400, 'Wrong app argument')
+            return
+        }
+
+        const token = getArg(ctx, 'token')
+        if (!token) {
+            resError(ctx, 400, 'Wrong token argument')
+            return
+        }
+
+        const scopes = getArg(ctx, 'scopes')
+        if (!scopes) {
+            resError(ctx, 400, 'Wrong scopes argument')
+            return
+        }
+        const scopesStr = scopes.split(',')
+
+        let result
+        try {
+            result = await registerToken(account, app, token, scopesStr)
+        } catch (error) {
+            console.error('firebase/register WS error', error.message)
+            resError(ctx, 400, 'Tarantool-step error', {
+                err_message: error.message
+            })
+            return
+        }
+
+        resData(ctx, {
+            status: 'ok',
+            result,
+        })
+    },
+    'firebase/unregister': async (ctx) => {
+        const { account, } = getAuthArgs(ctx)
+        if (!account) return
+
+        const token = getArg(ctx, 'token')
+        if (!token) {
+            resError(ctx, 400, 'Wrong token argument')
+            return
+        }
+
+        let result
+        try {
+            result = await unregisterToken(account, token)
+        } catch (error) {
+            console.error('firebase/unregister WS error', error.message)
+            resError(ctx, 400, 'Tarantool-step error', {
+                err_message: error.message
+            })
+            return
+        }
+
+        resData(ctx, {
+            status: 'ok',
+            result,
+        })
+    },
+}
+
+module.exports.cleanupFirebase = cleanupFirebase
+module.exports.putToCloud = putToCloud

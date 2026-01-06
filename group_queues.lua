@@ -1,8 +1,5 @@
 require 'queue_utils'
-
-function now()
-    return math.floor(clock.time() * 1000)
-end
+require 'misc_utils'
 
 function migrate_group_queues()
     if box.space.gq_migrated ~= nil then
