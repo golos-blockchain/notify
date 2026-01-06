@@ -7,6 +7,7 @@ require 'locks'
 require 'stats'
 require 'subscriptions'
 require 'group_queues'
+require 'fcm_tokens'
 
 io.output():setvbuf("no")
 
@@ -23,9 +24,6 @@ box.once('bootstrap', function()
     print('initializing..')
     box.schema.user.grant('guest', 'read,write,execute,create,drop,alter ', 'universe')
     box.session.su('guest')
-
-    steem = box.schema.create_space('steem')
-    steem:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
 
     counters = box.schema.create_space('counters')
     counters:create_index('primary', {type = 'tree', parts = {1, 'STR'}})
@@ -95,6 +93,7 @@ end)
 
 migrate_subs()
 migrate_group_queues()
+migrate_fcm_tokens()
 
 function send_json(req, table)
     local resp = req:render({text = json.encode(table)})

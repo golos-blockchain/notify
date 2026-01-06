@@ -6,11 +6,14 @@ const cors = require('koa-cors');
 const livereload = require('koa-livereload');
 const RateLimit = require('koa2-ratelimit').RateLimit;
 const golos = require('golos-lib-js');
+const admin = require('firebase-admin')
 
+const { initFirebase } = require('./firebase');
 const version = require('./version');
 const errorHandler = require('./error_handler');
 const useAuthApi = require('./api/auth');
 const useCountersApi = require('./api/counters');
+const useFirebaseApi = require('./api/firebase')
 const useQueuesApi = require('./api/queues');
 const useGroupQueuesApi = require('./api/group_queues')
 const useMsgsApi = require('./api/msgs');
@@ -74,11 +77,14 @@ app.use(router.allowedMethods());
 
 useAuthApi(app);
 useCountersApi(app);
+useFirebaseApi(app);
 useQueuesApi(app);
 useGroupQueuesApi(app)
 useMsgsApi(app);
 useStatsApi(app)
 useSubsApi(app)
+
+initFirebase();
 
 console.log('Connecting to', NODE_URL);
 

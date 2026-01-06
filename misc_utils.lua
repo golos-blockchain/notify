@@ -1,3 +1,7 @@
+function now()
+    return math.floor(clock.time() * 1000)
+end
+
 function print_r(t)
     local print_r_cache={}
     local function sub_print_r(t,indent)
