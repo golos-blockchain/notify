@@ -1,0 +1,9 @@
+{
+    "firebase_clients": {
+        "msg_android": {
+            "type": "service_account",
+            "project_id": "glstest-messenger",
+            "private_key_id": "..."
+        }
+    }
+}

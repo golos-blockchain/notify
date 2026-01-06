@@ -13,7 +13,9 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.8",
+    "config": "^4.1.1",
     "fetch-cookie": "^1.0.0",
+    "firebase-admin": "^13.6.0",
     "golos-lib-js": "^0.9.76",
     "koa": "^2.13.0",
     "koa-body": "^4.2.0",
