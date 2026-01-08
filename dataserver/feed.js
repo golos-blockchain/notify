@@ -3,6 +3,7 @@ const Tarantool = require('./tarantool');
 const { opGroup } = require('./msg_utils')
 const { SCOPES, sleep } = require('./utils');
 const { signal_fire } = require('./signals');
+const { cleanupFirebase } = require('./api/firebase')
 const { cleanupStats } = require('./api/stats')
 const { getSubs, putEvent } = require('./api/subs')
 const { addCounter } = require('./api/counters');
@@ -18,7 +19,7 @@ function getPostKey(op) {
 }
 
 async function cleanupQueues() {
-    console.log('cleanupQueues (just update it 4)');
+    console.log('cleanupQueues');
     const res = await Tarantool.instance('tarantool').call(
         'queue_list_for_cleanup');
     if (!res[0][0]) return;
@@ -488,9 +489,8 @@ module.exports = function startFeeding() {
 
         if (eventmeta.block % 10 === 0) {
             await cleanupQueues()
-        }
-        if (eventmeta.block % 10 === 0) {
             await cleanupStats()
+            await cleanupFirebase()
         }
     });
 }

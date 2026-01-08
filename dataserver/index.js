@@ -8,11 +8,12 @@ const RateLimit = require('koa2-ratelimit').RateLimit;
 const golos = require('golos-lib-js');
 const admin = require('firebase-admin')
 
-const { initFirebase, fireApps } = require('./firebase');
+const { initFirebase } = require('./firebase');
 const version = require('./version');
 const errorHandler = require('./error_handler');
 const useAuthApi = require('./api/auth');
 const useCountersApi = require('./api/counters');
+const useFirebaseApi = require('./api/firebase')
 const useQueuesApi = require('./api/queues');
 const useGroupQueuesApi = require('./api/group_queues')
 const useMsgsApi = require('./api/msgs');
@@ -74,49 +75,9 @@ app.use(koaBody());
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-router.get('/api/firebase/test/:token', async (ctx) => {
-    const { token } = ctx.params
-
-    const message = {
-        token: token, 
-        notification: {
-          title: 'High priority',
-          body: 'Test ' + Math.random()
-        },
-        android: {
-          priority: 'high',
-        },
-        apns: {
-          payload: {
-            aps: {
-              priority: 10
-            }
-          }
-        },
-        webpush: {
-          headers: {
-            "Urgency": "high"
-          }
-        }
-  };
-
-  try {
-    const response = await admin.messaging(fireApps['msg_android']).send(message);
-    ctx.body = {
-        token, message
-    }
-  } catch (error) {
-    console.error(error);
-    ctx.body = {
-        token,
-        error
-    }
-  }
-
-})
-
 useAuthApi(app);
 useCountersApi(app);
+useFirebaseApi(app);
 useQueuesApi(app);
 useGroupQueuesApi(app)
 useMsgsApi(app);

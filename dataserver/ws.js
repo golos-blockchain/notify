@@ -2,11 +2,12 @@ const { WebSocketServer } = require('ws')
 
 const { getArg, resData, resError } = require('./ws_utils')
 const { countersWsApi } = require('./api/counters')
+const { firebaseWsApi } = require('./api/firebase')
 const { queuesWsApi } = require('./api/queues')
 const { groupQueuesWsApi } = require('./api/group_queues')
 
 let routes = {}
-routes = {...routes, ...countersWsApi, ...queuesWsApi, ...groupQueuesWsApi}
+routes = {...routes, ...countersWsApi, ...firebaseWsApi, ...queuesWsApi, ...groupQueuesWsApi}
 const routeKeys = Object.keys(routes)
 
 const wsListen = (port, path, onListen) => {
