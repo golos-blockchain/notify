@@ -30,7 +30,7 @@
     "ws": "^8.14.2"
   },
   "devDependencies": {
-    "cypress": "^13.8.1",
+    "cypress": "^15.8.2",
     "nodemon": "^3.1.0"
   }
 }
