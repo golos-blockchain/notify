@@ -8,7 +8,7 @@ module.exports = defineConfig({
 
     ACC: "cyberfounder",
     ACC2: "cyberfounder100",
-    ACC_POSTING: "5K1aJ8JayUA7c2Ptg9Y2DetKxSvXGXa5GCcvYeHtn1Xh3v4egPS",
+    ACC_POSTING: "5HwQScueMZdELZpjVBD4gm6xhiKiMqGx18g4WtQ6wVr4nBdSxY5",
     ACC_ACTIVE: "5JVFFWRLwz6JoP9kguuRFfytToGU6cLgBVTL9t6NB3D3BQLbUBS",
   },
 
