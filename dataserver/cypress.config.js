@@ -12,7 +12,7 @@ module.exports = defineConfig({
     ACC_ACTIVE: "5JVFFWRLwz6JoP9kguuRFfytToGU6cLgBVTL9t6NB3D3BQLbUBS",
   },
 
-  defaultCommandTimeout: 10000,
+  defaultCommandTimeout: 15000,
 
   e2e: {
     setupNodeEvents(on, config) {

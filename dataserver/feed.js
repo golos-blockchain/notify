@@ -138,16 +138,9 @@ async function processMessage(op) {
             data.to,
             SCOPES.indexOf('message'),
         )
-        await putToQueues(
-            data.from,
-            'message',
-            opJson,
-            op.timestamp_prev);
-        await putToQueues(
-            data.to,
-            'message',
-            opJson,
-            op.timestamp_prev);
+        await putToQueues(data.from, 'message', opJson, op.timestamp_prev)
+        await putToQueues(data.to, 'message', opJson, op.timestamp_prev)
+        await putToCloud(data.to, 'message', opJson, op.timestamp_prev)
     }
 }
 
@@ -211,11 +204,8 @@ async function processCommentReply(op) {
         op.parent_author,
         SCOPES.indexOf('comment_reply'),
     )
-    await putToQueues(
-        op.parent_author,
-        'comment_reply',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.parent_author, 'comment_reply', op, op.timestamp_prev)
+    await putToCloud(op.parent_author, 'comment_reply', op, op.timestamp_prev)
 }
 
 async function processCommentMention(op) {
@@ -224,11 +214,8 @@ async function processCommentMention(op) {
         op.mentioned,
         SCOPES.indexOf('mention'),
     )
-    await putToQueues(
-        op.mentioned,
-        'mention',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.mentioned, 'mention', op, op.timestamp_prev)
+    await putToCloud(op.mentioned, 'mention', op, op.timestamp_prev)
 }
 
 async function processCommentFeed(op) {
@@ -237,11 +224,7 @@ async function processCommentFeed(op) {
         op.follower,
         SCOPES.indexOf('feed'),
     )
-    await putToQueues(
-        op.follower,
-        'feed',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.follower, 'feed', op, op.timestamp_prev)
 }
 
 async function processTransfer(op) {
@@ -257,16 +240,10 @@ async function processTransfer(op) {
         op.to,
         SCOPES.indexOf('receive'),
     )
-    await putToQueues(
-        op.from,
-        'send',
-        op,
-        op.timestamp_prev);
-    await putToQueues(
-        op.to,
-        'receive',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.from, 'send', op, op.timestamp_prev)
+    await putToCloud(op.from, 'send', op, op.timestamp_prev)
+    await putToQueues(op.to, 'receive', op, op.timestamp_prev)
+    await putToCloud(op.to, 'receive', op, op.timestamp_prev)
 }
 
 async function processDonate(op) {
@@ -286,11 +263,8 @@ async function processDonate(op) {
         op.to,
         SCOPES.indexOf(scope),
     )
-    await putToQueues(
-        op.to,
-        scope,
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.to, scope, op, op.timestamp_prev)
+    await putToCloud(op.to, scope, op, op.timestamp_prev)
     if (scope === 'donate_msgs') {
         await putToQueues(
             op.from,
@@ -323,16 +297,10 @@ async function processFillOrder(op) {
         op.open_owner,
         SCOPES.indexOf('fill_order'),
     )
-    await putToQueues(
-        op.current_owner,
-        'fill_order',
-        op,
-        op.timestamp_prev);
-    await putToQueues(
-        op.open_owner,
-        'fill_order',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.current_owner, 'fill_order', op, op.timestamp_prev)
+    await putToCloud(op.current_owner, 'fill_order', op, op.timestamp_prev)
+    await putToQueues(op.open_owner, 'fill_order', op, op.timestamp_prev)
+    await putToCloud(op.open_owner, 'fill_order', op, op.timestamp_prev)
 }
 
 async function processSubscriptionPayment(op) {
@@ -491,6 +459,8 @@ module.exports = function startFeeding() {
             await cleanupQueues()
             await cleanupStats()
             await cleanupFirebase()
+        } else if (process.env.NODE_ENV === 'development') {
+            await cleanupFirebase(6000)
         }
     });
 }

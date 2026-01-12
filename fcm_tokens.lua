@@ -3,7 +3,6 @@ require 'misc_utils'
 -- msecs, how much application notification channel will live
 -- (without any notifications or user re-logins)
 token_lifetime = 6*30*24*60*60*1000
-token_lifetime = 10*1000
 
 function migrate_fcm_tokens()
     if box.space.ft_migrated09012025 ~= nil then
@@ -35,10 +34,11 @@ function normalize_ft(ft)
         scopes = ft[4],
         created = ft[5],
         last_update = ft[6],
+        app = ft[7],
     }
 end
 
-function register_token(account, token, scopes)
+function register_token(account, app, token, scopes)
     local res = {}
 
     local unow = now()
@@ -46,11 +46,11 @@ function register_token(account, token, scopes)
 
     local ft = box.space.fcm_tokens.index.by_acc_token:get{account, token}
     if ft ~= nil then
-        box.space.fcm_tokens:update(ft[1], {{'=', 4, scopes}, {'=', 6, unow}})
+        box.space.fcm_tokens:update(ft[1], {{'=', 4, scopes}, {'=', 6, unow}, {'=', 7, app}})
         res.created = 0
         res.updated = unow
     else
-        box.space.fcm_tokens:auto_increment{account, token, scopes, unow, unow}
+        box.space.fcm_tokens:auto_increment{account, token, scopes, unow, unow, app}
     end
 
     return res
@@ -93,14 +93,19 @@ function delete_token(ft_id)
     box.space.fcm_tokens:delete(ft_id)
 end
 
-function cleanup_tokens()
+function cleanup_tokens(life_time)
     local res = {}
     res.removed = 0
 
     local unow = now()
     local fts = box.space.fcm_tokens.index.by_last_update:select({}, {iterator = 'GT', limit = 100})
     for i,ft in ipairs(fts) do
-        if (unow - ft[6]) > token_lifetime then
+        is_test = (string.sub(ft[3], 1, 13) == "firebase-test")
+        if not is_test then
+            life_time = token_lifetime
+        end
+
+        if (unow - ft[6]) > (life_time or token_lifetime) then
             delete_token(ft[1])
             res.removed = res.removed + 1
         else
