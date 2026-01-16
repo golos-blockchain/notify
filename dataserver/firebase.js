@@ -63,7 +63,7 @@ function getBody(opType, op, myAcc) {
     return body
 }
 
-async function pushToFirebase(app, token, opData, myAcc) {
+async function pushToFirebase(app, token, opData, myAcc, scope) {
     const [ opType, op ] = opData
 
     if (!fireApps[app]) {
@@ -77,7 +77,7 @@ async function pushToFirebase(app, token, opData, myAcc) {
     }
 
     if (token.startsWith('firebase-test')) {
-        await putToQueues(myAcc, 'message')
+        await putToQueues(myAcc, scope, opData, op.timestamp_prev)
         return
     }
 

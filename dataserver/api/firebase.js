@@ -74,7 +74,7 @@ async function putToCloud(account, scope, opData, timestamp) {
     for (const obj of tokens) {
         const { id, token, app } = obj
         try {
-            await pushToFirebase(app, token, opData, account)
+            await pushToFirebase(app, token, opData, account, scope)
         } catch (err) {
             if (config.has('cloud_push.log')) {
                 console.warn('Cannot sent Firebase push:', account, token, err)
@@ -105,7 +105,7 @@ module.exports = function useFirebaseApi(app) {
         }]
 
         try {
-            await pushToFirebase('msg_android', token, opData, 'xel')
+            await pushToFirebase('msg_android', token, opData, 'xel', 'message')
             ctx.body = {
                 token
             }
