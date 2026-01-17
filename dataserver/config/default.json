@@ -1,9 +1,19 @@
 {
+    "cloud_push": {
+        "log": true,
+    },
     "firebase_clients": {
         "msg_android": {
             "type": "service_account",
-            "project_id": "glstest-messenger",
-            "private_key_id": "..."
+            "project_id": "..."
+        },
+        "wallet_android": {
+            "type": "service_account",
+            "project_id": "..."
+        },
+        "blogs_android": {
+            "type": "service_account",
+            "project_id": "..."
         }
     }
 }

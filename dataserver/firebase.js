@@ -77,6 +77,7 @@ async function pushToFirebase(app, token, opData, myAcc, scope) {
     }
 
     if (token.startsWith('firebase-test')) {
+        op._fire_app = app
         await putToQueues(myAcc, scope, opData, op.timestamp_prev)
         return
     }

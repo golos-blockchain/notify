@@ -21,8 +21,8 @@ const postFirebase = async (path, body = {}) => {
     return { result: json.result }
 }
 
-const registerToken = async (token, scopes) => {
-    return await postFirebase(`/firebase/register/${token}/${scopes}`)
+const registerToken = async (app, token, scopes) => {
+    return await postFirebase(`/firebase/register/${app}/${token}/${scopes}`)
 }
 
 const unregisterToken = async (token) => {
@@ -51,13 +51,13 @@ describe('firebase - lifecycle tests', function () {
 
         const token = 'firebase-test' + Math.random()
 
-        var result = (await registerToken(token, 'send,receive')).result
+        var result = (await registerToken('wallet_android', token, 'send,receive')).result
         expect(result.created).not.to.equal(undefined)
         expect(result.updated).to.equal(undefined)
 
         global.log('Test register again...')
 
-        var result = (await registerToken(token, 'send,receive')).result
+        var result = (await registerToken('wallet_android', token, 'send,receive')).result
         expect(result.created).to.equal(0)
         expect(result.updated).not.to.equal(undefined)
 
@@ -90,13 +90,13 @@ describe('firebase - lifecycle tests', function () {
 
         const token = 'firebase-test' + Math.random()
 
-        var result = (await registerToken(token, 'send,receive')).result
+        var result = (await registerToken('wallet_android', token, 'send,receive')).result
         expect(result.created).not.to.equal(undefined)
         expect(result.updated).to.equal(undefined)
 
         global.log('Test register again (token exists, not cleaned)...')
 
-        var result = (await registerToken(token, 'send,receive')).result
+        var result = (await registerToken('wallet_android', token, 'send,receive')).result
         expect(result.created).to.equal(0)
         expect(result.updated).not.to.equal(undefined)
 
@@ -104,7 +104,7 @@ describe('firebase - lifecycle tests', function () {
 
         await delay(3000)
 
-        var result = (await registerToken(token, 'send,receive')).result
+        var result = (await registerToken('wallet_android', token, 'send,receive')).result
         expect(result.created).to.equal(0)
         expect(result.updated).not.to.equal(undefined)
 

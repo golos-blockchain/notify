@@ -6,9 +6,13 @@ const { fireApps, pushToFirebase } = require('../firebase')
 const Tarantool = require('../tarantool')
 const { returnError, SCOPES } = require('../utils')
 
-async function registerToken(account, token, scopesStr) {
+async function registerToken(account, app, token, scopesStr) {
     if (!scopesStr.length) {
         throw new Error('No correct notification scopes')
+    }
+
+    if (!fireApps[app]) {
+        throw new Error('Wrong firebase app: ' + app)
     }
 
     let scopeIds = {}
@@ -27,7 +31,7 @@ async function registerToken(account, token, scopesStr) {
     let res
     try {
         res = await Tarantool.instance('tarantool').call('register_token',
-            account, token, scopeIds)
+            account, app, token, scopeIds)
 
         res = res[0][0]
 
@@ -70,21 +74,25 @@ async function listTokens(account, scope) {
 }
 
 async function putToCloud(account, scope, opData, timestamp) {
-    const tokens = await listTokens(account, scope)
-    for (const obj of tokens) {
-        const { id, token, app } = obj
-        try {
-            await pushToFirebase(app, token, opData, account, scope)
-        } catch (err) {
-            if (config.has('cloud_push.log')) {
-                console.warn('Cannot sent Firebase push:', account, token, err)
+    try {
+        const tokens = await listTokens(account, scope)
+        for (const obj of tokens) {
+            const { id, token, app } = obj
+            try {
+                await pushToFirebase(app, token, opData, account, scope)
+            } catch (err) {
+                if (config.has('cloud_push.log')) {
+                    console.warn('Cannot sent Firebase push:', account, app, token, err)
+                }
+                await Tarantool.instance('tarantool').call('delete_token', id)
+                continue 
             }
-            await Tarantool.instance('tarantool').call('delete_token', id)
-            continue 
+            try {
+                await Tarantool.instance('tarantool').call('update_token', id)
+            } catch (err) {}
         }
-        try {
-            await Tarantool.instance('tarantool').call('update_token', id)
-        } catch (err) {}
+    } catch (err) {
+        console.error('CLOUD ERROR:', 'putToCloud', err)
     }
 }
 
@@ -118,7 +126,7 @@ module.exports = function useFirebaseApi(app) {
         }
     })
 
-    router.post('/firebase/register/:token/:scopes', async (ctx) => {
+    router.post('/firebase/register/:app/:token/:scopes', async (ctx) => {
         if (!ctx.session.a) {
             ctx.status = 403
             return returnError(ctx, 'Access denied - not authorized')
@@ -126,7 +134,7 @@ module.exports = function useFirebaseApi(app) {
 
         const account = ctx.session.a
 
-        const { token, scopes } = ctx.params
+        const { app, token, scopes } = ctx.params
         if (!token) {
             ctx.status = 400
             return returnError(ctx, 'Wrong token parameter')
@@ -136,14 +144,14 @@ module.exports = function useFirebaseApi(app) {
 
         let result
         try {
-            result = await registerToken(account, token, scopesStr)
+            result = await registerToken(account, app, token, scopesStr)
         } catch (error) {
             console.error(`[reqid ${ctx.request.header['x-request-id']}] ${ctx.method} ERRORLOG /firebase/register @${account} ${token}`, error)
             ctx.status = 400
             ctx.body = {
                 result: null,
                 status: 'err',
-                error: 'Tarantool error',
+                error: error?.toString(),
             }
             return
         }
@@ -177,7 +185,7 @@ module.exports = function useFirebaseApi(app) {
             ctx.body = {
                 result: null,
                 status: 'err',
-                error: 'Tarantool error',
+                error: error?.toString(),
             }
             return
         }
@@ -194,15 +202,28 @@ module.exports.firebaseWsApi = {
         const { account, } = getAuthArgs(ctx)
         if (!account) return
 
+        const app = getArg(ctx, 'app')
+        if (!app) {
+            resError(ctx, 400, 'Wrong app argument')
+            return
+        }
+
         const token = getArg(ctx, 'token')
         if (!token) {
             resError(ctx, 400, 'Wrong token argument')
             return
         }
 
+        const scopes = getArg(ctx, 'scopes')
+        if (!scopes) {
+            resError(ctx, 400, 'Wrong scopes argument')
+            return
+        }
+        const scopesStr = scopes.split(',')
+
         let result
         try {
-            result = await registerToken(account, token)
+            result = await registerToken(account, app, token, scopesStr)
         } catch (error) {
             console.error('firebase/register WS error', error.message)
             resError(ctx, 400, 'Tarantool-step error', {
