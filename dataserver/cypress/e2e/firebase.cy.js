@@ -8,25 +8,29 @@ if (CHAIN_ID) {
     golos.config.set('chain_id', CHAIN_ID)
 }
 
-const postFirebase = async (path, body = {}) => {
+const postFirebase = async (path, body = {}, shouldBeOk = true) => {
     var request = {...getRequestBase(),
         method: 'post',
         body: JSON.stringify(body),
     }
     var resp = await fetch(global.HOST + path, request)
     var json = await resp.json()
-    expect(json.error).to.equal(undefined)
-    expect(json.status).to.equal('ok')
-    expect(json.result).not.to.equal(undefined)
-    return { result: json.result }
+    if (shouldBeOk) {
+        expect(json.error).to.equal(undefined)
+        expect(json.status).to.equal('ok')
+        expect(json.result).not.to.equal(undefined)
+    }
+    return { result: json.result, error: json.error }
 }
 
-const registerToken = async (app, token, scopes) => {
-    return await postFirebase(`/firebase/register/${app}/${token}/${scopes}`)
+const registerToken = async (app, token, scopes, shouldBeOk = true) => {
+    return await postFirebase(`/firebase/register/${app}/${token}/${scopes}`,
+        {}, shouldBeOk)
 }
 
-const unregisterToken = async (token) => {
-    return await postFirebase(`/firebase/unregister/${token}`)
+const unregisterToken = async (token, shouldBeOk = true) => {
+    return await postFirebase(`/firebase/unregister/${token}`,
+        {}, shouldBeOk)
 }
 
 const delay = async (msec) => {
@@ -34,6 +38,32 @@ const delay = async (msec) => {
 }
 
 describe('firebase - lifecycle tests', function () {
+    it('/firebase - register', async function() {
+        global.log('Login...')
+
+        var login_challenge = await AuthClient.obtainLoginChallenge(ACC)
+
+        var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING)
+        expect(json.error).to.equal(undefined)
+        expect(json.status).to.equal('ok')
+
+        var json = await global.login(ACC, AuthClient.session);
+        expect(json.error).to.equal(undefined)
+        expect(json.status).to.equal('ok')
+
+        global.log('Test register - wrong app...')
+
+        const token = 'firebase-test' + Math.random()
+
+        var error = (await registerToken('fake', token, 'send,receive', false)).error
+        expect(error).to.equal('Wrong firebase app: fake')
+
+        global.log('Test register - wrong scope...')
+
+        var error = (await registerToken('wallet_android', 'token', 'send,fake', false)).error
+        expect(error).to.equal('Wrong notification scope - fake')
+    })
+
     it('/firebase - register-unregister', async function() {
         global.log('Login...')
 
@@ -71,6 +101,64 @@ describe('firebase - lifecycle tests', function () {
 
         var result = (await unregisterToken(token)).result
         expect(result.unregistered).to.equal(0)
+    })
+
+    it('/firebase - register-trigger', async function() {
+        global.log('Login', ACC, 'and preserve session...')
+
+        var login_challenge = await AuthClient.obtainLoginChallenge(ACC)
+
+        var json = await AuthClient.signAndAuth(login_challenge, ACC, ACC_POSTING)
+        expect(json.error).to.equal(undefined)
+        expect(json.status).to.equal('ok')
+
+        var json = await global.login(ACC, AuthClient.session);
+        expect(json.error).to.equal(undefined)
+        expect(json.status).to.equal('ok')
+
+        const sessionAcc = global.session
+
+        global.log('Login' + ACC2 + 'and preserve session...')
+
+        delete AuthClient.session
+
+        var login_challenge = await AuthClient.obtainLoginChallenge(ACC2)
+
+        var json = await AuthClient.signAndAuth(login_challenge, ACC2, ACC_POSTING)
+        expect(json.error).to.equal(undefined)
+        expect(json.status).to.equal('ok')
+
+        var json = await global.login(ACC2, AuthClient.session);
+        expect(json.error).to.equal(undefined)
+        expect(json.status).to.equal('ok')
+
+        const sessionAcc2 = global.session
+
+        global.log('Test register', ACC, '...')
+
+        global.session = sessionAcc
+
+        var tokenAcc = 'firebase-test-acc1-' + Math.random()
+
+        var result = (await registerToken('wallet_android', tokenAcc, 'send,receive')).result
+        expect(result.created).not.to.equal(undefined)
+        expect(result.updated).to.equal(undefined)
+
+        global.log('Test register', ACC2, '...')
+
+        global.session = sessionAcc2
+
+        var tokenAcc2 = 'firebase-test-acc2-' + Math.random()
+
+        var result = (await registerToken('wallet_android', tokenAcc2, 'send,receive')).result
+        expect(result.created).not.to.equal(undefined)
+        expect(result.updated).to.equal(undefined)
+
+        global.log('Do transfer', ACC, 'to', ACC2, '...')
+
+        await golos.broadcast.transferAsync(
+            ACC_ACTIVE,
+            ACC, ACC2, '0.001 GOLOS', '');
     })
 
     it('/firebase - register-cleanup', async function() {

@@ -1,5 +1,6 @@
 const config = require('config')
 const admin = require('firebase-admin')
+const { putToQueues } = require('./api/queues')
 
 const fireApps = {}
 
@@ -50,8 +51,12 @@ function getBody(opType, op, myAcc) {
 
     else if (opType === 'donate' || opType === 'donate_msgs') {
         body = "@" + op.from + " отблагодарил вас " + op.amount
-    } else if (opType === "transfer" && op.from !== myAcc) {
-        body = "@" + op.from + " перевел вам " + op.amount
+    } else if (opType === "transfer" ) {
+        if (op.from !== myAcc) {
+            body = "@" + op.from + " перевел вам " + op.amount
+        } else {
+            body = "вы перевели " + op.amount + ' @' + op.to
+        }
     } else if (opType === "fill_order") {
         body = "Ордер на сумму " + op.current_pays + " в обмен на " + op.open_pays + " выполнен"
     }
@@ -60,11 +65,13 @@ function getBody(opType, op, myAcc) {
         body = "Новое сообщение от @" + op.from
     }
 
+    body = body || JSON.stringify([opType, op])
+
     return body
 }
 
-async function pushToFirebase(app, token, opData, myAcc, scope) {
-    const [ opType, op ] = opData
+async function pushToFirebase(app, token, op, myAcc, scope) {
+    const opType = op.type
 
     if (!fireApps[app]) {
         throw new Error('No firebase app', app, 'for operation:', opType)
@@ -76,9 +83,11 @@ async function pushToFirebase(app, token, opData, myAcc, scope) {
         return
     }
 
+    console.log(token)
     if (token.startsWith('firebase-test')) {
         op._fire_app = app
-        await putToQueues(myAcc, scope, opData, op.timestamp_prev)
+        await putToQueues(myAcc, scope, op, op.timestamp_prev)
+        console.error('Test firebase:', app, token, op, myAcc, scope)
         return
     }
 
