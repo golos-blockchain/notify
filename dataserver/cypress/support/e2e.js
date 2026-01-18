@@ -8,10 +8,10 @@ if (CHAIN_ID) {
 
 global.HOST = 'http://localhost:8805';
 
-global.log = (msg) => {
-    console.log(msg);
-    cy.log(msg);
-};
+global.log = (msg, ...args) => {
+    console.log(msg, ...args)
+    cy.log(msg, ...args)
+}
 
 global.random = (length = 10) => {
     return Cypress._.random(1000000, 9000000);
@@ -77,4 +77,19 @@ global.login = async (acc, authSession) =>{
 
     var json = await resp.json();
     return json;
+}
+
+global.take = async (acc, subscriber_id, task_ids = undefined) => {
+    var request = {...global.getRequestBase(),
+        method: 'get',
+    }
+    var url = global.HOST + `/take/@${acc}/${subscriber_id}`
+    if (task_ids) url += '/' + task_ids
+    var resp = await fetch(url, request)
+    var json = await resp.json()
+
+    expect(json.error).to.equal(undefined)
+    expect(json.status).to.equal('ok')
+    expect(json.tasks).to.be.an('array')
+    return json.tasks
 }

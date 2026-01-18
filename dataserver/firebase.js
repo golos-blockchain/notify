@@ -55,7 +55,7 @@ function getBody(opType, op, myAcc) {
         if (op.from !== myAcc) {
             body = "@" + op.from + " перевел вам " + op.amount
         } else {
-            body = "вы перевели " + op.amount + ' @' + op.to
+            body = "Вы перевели " + op.amount + ' @' + op.to
         }
     } else if (opType === "fill_order") {
         body = "Ордер на сумму " + op.current_pays + " в обмен на " + op.open_pays + " выполнен"
@@ -70,8 +70,8 @@ function getBody(opType, op, myAcc) {
     return body
 }
 
-async function pushToFirebase(app, token, op, myAcc, scope) {
-    const opType = op.type
+async function pushToFirebase(app, token, opData, myAcc, scope) {
+    const [ opType, op ] = opData
 
     if (!fireApps[app]) {
         throw new Error('No firebase app', app, 'for operation:', opType)
@@ -83,11 +83,13 @@ async function pushToFirebase(app, token, op, myAcc, scope) {
         return
     }
 
-    console.log(token)
     if (token.startsWith('firebase-test')) {
-        op._fire_app = app
-        await putToQueues(myAcc, scope, op, op.timestamp_prev)
-        console.error('Test firebase:', app, token, op, myAcc, scope)
+        const newOp = {...op, _fire: {
+            app, title, body 
+        }}
+        const newOpData = [opType, newOp]
+        await putToQueues(myAcc, scope, newOpData, op.timestamp_prev)
+        console.error('Test firebase:', app, token, newOpData, myAcc, scope)
         return
     }
 

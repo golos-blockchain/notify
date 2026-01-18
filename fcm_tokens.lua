@@ -89,7 +89,7 @@ function update_token(ft_id)
     box.space.fcm_tokens:update(ft_id, {{'=', 6, now()}})
 end
 
-function delete_token(ft_id)
+function delete_token(ft_id, token)
     box.space.fcm_tokens:delete(ft_id)
 end
 
