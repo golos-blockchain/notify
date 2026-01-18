@@ -61,7 +61,7 @@ async function cleanupFirebase(lifeTime = undefined) {
     } else {
         console.log('cleanupFirebase')
     }
-    let res = await Tarantool.instance('tarantool').call('cleanup_tokens', lifeTime)
+    let res = await Tarantool.instance('tarantool').call('cleanup_tokens', lifeTime || false)
     res = res[0][0]
     console.log('cleanupFirebase end, removed:', res.removed)
 }
@@ -75,7 +75,12 @@ async function listTokens(account, scope) {
 
 async function putToCloud(account, scope, opData, timestamp) {
     try {
-        const tokens = await listTokens(account, scope)
+        if (!opData[1]) { // if not custom_json, unify it
+            opData = [opData.type, opData]
+        }
+
+        const scopeI = SCOPES.indexOf(scope)
+        const tokens = await listTokens(account, scopeI)
         for (const obj of tokens) {
             const { id, token, app } = obj
             try {
@@ -84,7 +89,7 @@ async function putToCloud(account, scope, opData, timestamp) {
                 if (config.has('cloud_push.log')) {
                     console.warn('Cannot sent Firebase push:', account, app, token, err)
                 }
-                await Tarantool.instance('tarantool').call('delete_token', id)
+                await Tarantool.instance('tarantool').call('delete_token', id, token)
                 continue 
             }
             try {
@@ -100,7 +105,13 @@ module.exports = function useFirebaseApi(app) {
     const router = new koaRouter()
     app.use(router.routes())
 
-    router.get('/firebase/test/:token', async (ctx) => {
+    router.get('/firebase', async (ctx) => {
+        ctx.body = {
+            apps: Object.keys(fireApps),
+        }
+    })
+
+    router.get('/firebase/debug/:token/send', async (ctx) => {
         if (process.env.NODE_ENV !== 'development') {
             ctx.body = { error: '403' }
             return;
@@ -108,12 +119,14 @@ module.exports = function useFirebaseApi(app) {
 
         const { token } = ctx.params
 
-        const opData = ['private_message', {
-            'from': 'lex',
-        }]
+        const op = {
+            type: 'private_message',
+            from: 'lex',
+            to: 'xel',
+        }
 
         try {
-            await pushToFirebase('msg_android', token, opData, 'xel', 'message')
+            await pushToFirebase('msg_android', token, op, 'xel', 'message')
             ctx.body = {
                 token
             }
@@ -151,7 +164,7 @@ module.exports = function useFirebaseApi(app) {
             ctx.body = {
                 result: null,
                 status: 'err',
-                error: error?.toString(),
+                error: error?.message || error,
             }
             return
         }
@@ -185,7 +198,7 @@ module.exports = function useFirebaseApi(app) {
             ctx.body = {
                 result: null,
                 status: 'err',
-                error: error?.toString(),
+                error: error?.message || error,
             }
             return
         }
