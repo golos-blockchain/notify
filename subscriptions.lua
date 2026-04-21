@@ -1,8 +1,6 @@
-local MAX_PER_ACCOUNT = 50
+require 'misc_utils'
 
-function now()
-    return math.floor(clock.time() * 1000)
-end
+local MAX_PER_ACCOUNT = 50
 
 function migrate_subs()
     if box.space.subs_migrated ~= nil then

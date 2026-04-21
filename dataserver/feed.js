@@ -3,6 +3,7 @@ const Tarantool = require('./tarantool');
 const { opGroup } = require('./msg_utils')
 const { SCOPES, sleep } = require('./utils');
 const { signal_fire } = require('./signals');
+const { cleanupFirebase, putToCloud } = require('./api/firebase')
 const { cleanupStats } = require('./api/stats')
 const { getSubs, putEvent } = require('./api/subs')
 const { addCounter } = require('./api/counters');
@@ -18,7 +19,7 @@ function getPostKey(op) {
 }
 
 async function cleanupQueues() {
-    console.log('cleanupQueues (just update it 4)');
+    console.log('cleanupQueues');
     const res = await Tarantool.instance('tarantool').call(
         'queue_list_for_cleanup');
     if (!res[0][0]) return;
@@ -137,16 +138,11 @@ async function processMessage(op) {
             data.to,
             SCOPES.indexOf('message'),
         )
-        await putToQueues(
-            data.from,
-            'message',
-            opJson,
-            op.timestamp_prev);
-        await putToQueues(
-            data.to,
-            'message',
-            opJson,
-            op.timestamp_prev);
+        await putToQueues(data.from, 'message', opJson, op.timestamp_prev)
+        await putToQueues(data.to, 'message', opJson, op.timestamp_prev)
+        if (opJson[0] === 'private_message') {
+            await putToCloud(data.to, 'message', opJson, op.timestamp_prev)
+        }
     }
 }
 
@@ -210,11 +206,8 @@ async function processCommentReply(op) {
         op.parent_author,
         SCOPES.indexOf('comment_reply'),
     )
-    await putToQueues(
-        op.parent_author,
-        'comment_reply',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.parent_author, 'comment_reply', op, op.timestamp_prev)
+    await putToCloud(op.parent_author, 'comment_reply', op, op.timestamp_prev)
 }
 
 async function processCommentMention(op) {
@@ -223,11 +216,8 @@ async function processCommentMention(op) {
         op.mentioned,
         SCOPES.indexOf('mention'),
     )
-    await putToQueues(
-        op.mentioned,
-        'mention',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.mentioned, 'mention', op, op.timestamp_prev)
+    await putToCloud(op.mentioned, 'mention', op, op.timestamp_prev)
 }
 
 async function processCommentFeed(op) {
@@ -236,11 +226,7 @@ async function processCommentFeed(op) {
         op.follower,
         SCOPES.indexOf('feed'),
     )
-    await putToQueues(
-        op.follower,
-        'feed',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.follower, 'feed', op, op.timestamp_prev)
 }
 
 async function processTransfer(op) {
@@ -256,16 +242,10 @@ async function processTransfer(op) {
         op.to,
         SCOPES.indexOf('receive'),
     )
-    await putToQueues(
-        op.from,
-        'send',
-        op,
-        op.timestamp_prev);
-    await putToQueues(
-        op.to,
-        'receive',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.from, 'send', op, op.timestamp_prev)
+    await putToCloud(op.from, 'send', op, op.timestamp_prev)
+    await putToQueues(op.to, 'receive', op, op.timestamp_prev)
+    await putToCloud(op.to, 'receive', op, op.timestamp_prev)
 }
 
 async function processDonate(op) {
@@ -285,11 +265,8 @@ async function processDonate(op) {
         op.to,
         SCOPES.indexOf(scope),
     )
-    await putToQueues(
-        op.to,
-        scope,
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.to, scope, op, op.timestamp_prev)
+    await putToCloud(op.to, scope, op, op.timestamp_prev)
     if (scope === 'donate_msgs') {
         await putToQueues(
             op.from,
@@ -322,16 +299,10 @@ async function processFillOrder(op) {
         op.open_owner,
         SCOPES.indexOf('fill_order'),
     )
-    await putToQueues(
-        op.current_owner,
-        'fill_order',
-        op,
-        op.timestamp_prev);
-    await putToQueues(
-        op.open_owner,
-        'fill_order',
-        op,
-        op.timestamp_prev);
+    await putToQueues(op.current_owner, 'fill_order', op, op.timestamp_prev)
+    await putToCloud(op.current_owner, 'fill_order', op, op.timestamp_prev)
+    await putToQueues(op.open_owner, 'fill_order', op, op.timestamp_prev)
+    await putToCloud(op.open_owner, 'fill_order', op, op.timestamp_prev)
 }
 
 async function processSubscriptionPayment(op) {
@@ -488,9 +459,10 @@ module.exports = function startFeeding() {
 
         if (eventmeta.block % 10 === 0) {
             await cleanupQueues()
-        }
-        if (eventmeta.block % 10 === 0) {
             await cleanupStats()
+            await cleanupFirebase()
+        } else if (process.env.NODE_ENV === 'development') {
+            await cleanupFirebase(6000)
         }
     });
 }

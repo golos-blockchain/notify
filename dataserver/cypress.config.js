@@ -1,0 +1,22 @@
+const { defineConfig } = require("cypress");
+
+module.exports = defineConfig({
+  env: {
+    NODE_URL: "ws://127.0.0.1:8091/",
+    CHAIN_ID:
+      "5876894a41e6361bde2e73278f07340f2eb8b41c2facd29099de9deef6cdb679",
+
+    ACC: "cyberfounder",
+    ACC2: "cyberfounder100",
+    ACC_POSTING: "5HwQScueMZdELZpjVBD4gm6xhiKiMqGx18g4WtQ6wVr4nBdSxY5",
+    ACC_ACTIVE: "5JVFFWRLwz6JoP9kguuRFfytToGU6cLgBVTL9t6NB3D3BQLbUBS",
+  },
+
+  defaultCommandTimeout: 15000,
+
+  e2e: {
+    setupNodeEvents(on, config) {
+      // implement node event listeners here
+    },
+  },
+});
